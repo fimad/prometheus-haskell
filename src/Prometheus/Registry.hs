@@ -34,18 +34,45 @@ register desc = STM.atomically $ do
     return $ Metric $ STM.atomically . STM.modifyTVar' stateTVar
 
 checkName :: Registry -> MetricDesc s -> a -> a
-checkName registry newDesc r = foldl check r $ registry
+checkName registry newDesc r = foldl check r registry
     where
         check a (MkRegisteredMetric (desc, _))
-            | newName == nameOf desc = error errorMessage
-            | otherwise              = a
+            | (x:_) <- newName, not $ validStart x      = error errorInvalid
+            | (_:xs) <- newName, not $ all validRest xs = error errorInvalid
+            | ('_':'_':_) <- newName                    = error errorPrefix
+            | [] <- newName                             = error errorEmpty
+            | newName == nameOf desc                    = error errorDuplicate
+            | otherwise                                 = a
+
         nameOf = metricName . descInfo
         newName = nameOf newDesc
-        errorMessage = concat [
+
+        errorDuplicate = concat [
                 "A metric with the name '"
             ,   newName
             ,   "' has already been registered."
             ]
+
+        errorInvalid = concat [
+                "The metric '", newName, "' contains invalid characters."
+            ]
+
+        errorPrefix = concat [
+                "The metric '", newName, "' cannot start with '__'."
+            ]
+
+        errorEmpty = "Empty metric names are not allowed."
+
+        validStart c =  ('a' <= c && c <= 'z')
+                     || ('A' <= c && c <= 'Z')
+                     || c == '_'
+                     || c == ':'
+
+        validRest c =  ('a' <= c && c <= 'z')
+                    || ('A' <= c && c <= 'Z')
+                    || ('0' <= c && c <= '9')
+                    || c == '_'
+                    || c == ':'
 
 unsafeRegister :: MetricDesc s -> Metric s
 unsafeRegister = unsafePerformIO . register

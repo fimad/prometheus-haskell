@@ -33,10 +33,24 @@ vector mkMetric labelKeys info = checkLabelKeys labelKeys MetricDesc {
 
 checkLabelKeys :: Label l => l -> a -> a
 checkLabelKeys keys r = foldl check r $ map fst $ labelPairs keys keys
-    where check _ "instance" = error "The label 'instance' is reserved."
-          check _ "job"      = error "The label 'job' is reserved."
-          check _ "quantile" = error "The label 'quantile' is reserved."
-          check a _          = a
+    where
+        check _ "instance" = error "The label 'instance' is reserved."
+        check _ "job"      = error "The label 'job' is reserved."
+        check _ "quantile" = error "The label 'quantile' is reserved."
+        check a (k:ey)
+            | validStart k && all validRest ey = a
+            | otherwise = error $ "The label '" ++ (k:ey) ++ "' is not valid."
+        check _ []         = error "Empty labels are not allowed."
+
+        validStart c =  ('a' <= c && c <= 'z')
+                     || ('A' <= c && c <= 'Z')
+                     || c == '_'
+
+        validRest c =  ('a' <= c && c <= 'z')
+                    || ('A' <= c && c <= 'Z')
+                    || ('0' <= c && c <= '9')
+                    || c == '_'
+
 
 dumpVector :: Label l => LabelPairs -> Info -> Vector l m -> LBS.ByteString
 dumpVector preLabels info (MkVector key desc metrics) =
