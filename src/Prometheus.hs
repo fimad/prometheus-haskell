@@ -13,7 +13,6 @@ module Prometheus (
 ,   Counter
 ,   counter
 ,   incCounter
-,   setCounter
 
 ,   Gauge
 ,   gauge
