@@ -26,7 +26,6 @@ register desc = do
     STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
     return metric
 
-
 unsafeRegister :: MetricDesc s -> Metric s
 unsafeRegister = unsafePerformIO . register
 
