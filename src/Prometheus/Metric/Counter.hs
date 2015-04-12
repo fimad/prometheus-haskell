@@ -7,6 +7,7 @@ module Prometheus.Metric.Counter (
 
 import Prometheus.Info
 import Prometheus.Metric
+import Prometheus.MonadMetric
 
 
 newtype Counter = MkCounter Integer
@@ -23,10 +24,10 @@ counter info = MetricDesc {
     }
 
 incCounter :: MonadMetric m => Metric Counter -> m ()
-incCounter counter = metricModify counter counter inc
+incCounter counter = doIO $ metricModify counter inc
     where inc (MkCounter i) = (i + 1) `seq` MkCounter (i + 1)
 
 setCounter :: (MonadMetric m, Integral i) => i -> Metric Counter -> m ()
-setCounter i counter = metricModify counter counter set
+setCounter i counter = doIO $ metricModify counter set
     where set _ = integer `seq` MkCounter integer
           integer = fromIntegral i

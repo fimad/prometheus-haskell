@@ -34,4 +34,5 @@ import Prometheus.Metric
 import Prometheus.Metric.Counter
 import Prometheus.Metric.Gauge
 import Prometheus.Metric.Vector
+import Prometheus.MonadMetric
 import Prometheus.Registry

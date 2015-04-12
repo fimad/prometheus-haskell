@@ -7,6 +7,7 @@ module Prometheus.Metric.Vector (
 import Prometheus.Info
 import Prometheus.Label
 import Prometheus.Metric
+import Prometheus.MonadMetric
 
 import Data.List (intersperse)
 import qualified Data.ByteString.Lazy as LBS
@@ -56,7 +57,7 @@ withLabel metric label f = f innerMetric
         -- Modify the inner state of the vector corresponding to the given
         -- label. This will either apply g to the current value in the map, or
         -- apply g to the initial value and insert it into the map.
-        modifyInner _ g = metricModify metric metric
+        modifyInner g = metricModify metric
                         $ \(MkVector keys desc metrics) -> MkVector {
                                 vectorKeys      = keys
                             ,   vectorInnerDesc = desc
@@ -69,10 +70,4 @@ withLabel metric label f = f innerMetric
 
         -- Craft a new metric that when modified will update the value in the
         -- vector's map of inner metric states.
-        innerMetric = Metric {
-                metricDump   = undefined
-            ,   metricInfo   = undefined
-            ,   metricState  = undefined
-            ,   metricType   = undefined
-            ,   metricModify = modifyInner
-            }
+        innerMetric = Metric {metricModify = modifyInner}

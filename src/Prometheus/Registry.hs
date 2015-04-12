@@ -13,7 +13,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.UTF8 as LBS
 
 
-data RegisteredMetric = forall s. MkRegisteredMetric (Metric s)
+data RegisteredMetric = forall s. MkRegisteredMetric (MetricDesc s, STM.TVar s)
 
 type Registry = [RegisteredMetric]
 
@@ -26,10 +26,10 @@ register desc = do
     -- Force the metric descriptor to be evaluated. This allows errors returned
     -- by descriptor creating functions to be thrown on registration instead of
     -- at the first use of the metric.
-    metric <- desc `seq` makeMetric desc
-    let addToRegistry = (MkRegisteredMetric metric :)
+    stateTVar <- desc `seq` STM.newTVarIO (descInitial desc)
+    let addToRegistry = (MkRegisteredMetric (desc, stateTVar) :)
     STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
-    return metric
+    return $ Metric $ STM.atomically . STM.modifyTVar' stateTVar
 
 dumpMetrics :: IO LBS.ByteString
 dumpMetrics = do
@@ -38,12 +38,12 @@ dumpMetrics = do
     return $ LBS.concat $ intersperse (LBS.fromString "\n") dumps
 
 dumpMetric :: RegisteredMetric -> IO LBS.ByteString
-dumpMetric (MkRegisteredMetric metric) = do
-    state <- STM.atomically $ STM.readTVar (metricState metric)
-    return $ prefix `LBS.append` metricDump metric [] info state
+dumpMetric (MkRegisteredMetric (desc, stateTVar)) = do
+    state <- STM.atomically $ STM.readTVar stateTVar
+    return $ prefix `LBS.append` descDump desc [] info state
     where
-        ty = metricType metric
-        info = metricInfo metric
+        ty = descType desc
+        info = descInfo desc
         name = metricName info
         help = metricHelp info
         prefix =  LBS.fromString $ unlines [
