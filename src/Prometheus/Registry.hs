@@ -1,5 +1,6 @@
 module Prometheus.Registry (
     register
+,   unsafeRegister
 ,   dumpMetrics
 ) where
 
@@ -30,6 +31,9 @@ register desc = do
     let addToRegistry = (MkRegisteredMetric (desc, stateTVar) :)
     STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
     return $ Metric $ STM.atomically . STM.modifyTVar' stateTVar
+
+unsafeRegister :: MetricDesc s -> Metric s
+unsafeRegister = unsafePerformIO . register
 
 dumpMetrics :: IO LBS.ByteString
 dumpMetrics = do

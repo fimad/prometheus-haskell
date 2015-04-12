@@ -8,6 +8,7 @@ module Prometheus (
 ,   MonadMetric
 
 ,   register
+,   unsafeRegister
 ,   dumpMetrics
 
 ,   Counter
