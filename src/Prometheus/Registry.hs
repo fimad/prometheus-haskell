@@ -7,6 +7,7 @@ module Prometheus.Registry (
 import Prometheus.Info
 import Prometheus.Metric
 
+import Control.Applicative ((<$>))
 import Data.List (intersperse)
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Control.Concurrent.STM as STM
@@ -80,8 +81,8 @@ unsafeRegister = unsafePerformIO . register
 dumpMetrics :: IO LBS.ByteString
 dumpMetrics = do
     registry <- STM.atomically $ STM.readTVar globalRegistry
-    dumps <- mapM dumpMetric registry
-    return $ LBS.concat $ intersperse (LBS.fromString "\n") dumps
+    dumps <- (++ [LBS.empty]) <$> mapM dumpMetric registry
+    return $ LBS.concat $ intersperse (LBS.fromString "\n") $ dumps
 
 dumpMetric :: RegisteredMetric -> IO LBS.ByteString
 dumpMetric (MkRegisteredMetric (desc, stateTVar)) = do

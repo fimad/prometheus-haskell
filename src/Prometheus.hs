@@ -25,6 +25,8 @@ module Prometheus (
 ,   Vector
 ,   vector
 ,   withLabel
+,   removeLabel
+,   clearLabels
 
 ,   Label (..)
 ,   LabelPairs

@@ -1,7 +1,9 @@
 module Prometheus.Metric.Vector (
-    Vector
+    Vector (..)
 ,   vector
 ,   withLabel
+,   removeLabel
+,   clearLabels
 ) where
 
 import Prometheus.Info
@@ -51,7 +53,6 @@ checkLabelKeys keys r = foldl check r $ map fst $ labelPairs keys keys
                     || ('0' <= c && c <= '9')
                     || c == '_'
 
-
 dumpVector :: Label l => LabelPairs -> Info -> Vector l m -> LBS.ByteString
 dumpVector preLabels info (MkVector key desc metrics) =
         LBS.concat $ intersperse (LBS.fromString "\n") dumpedInnerMetrics
@@ -71,17 +72,26 @@ withLabel metric label f = f innerMetric
         -- Modify the inner state of the vector corresponding to the given
         -- label. This will either apply g to the current value in the map, or
         -- apply g to the initial value and insert it into the map.
-        modifyInner g = metricModify metric
-                        $ \(MkVector keys desc metrics) -> MkVector {
-                                vectorKeys      = keys
-                            ,   vectorInnerDesc = desc
-                            ,   vectorMetrics   = Map.insertWith
-                                                    (\_ old -> g old)
-                                                    label
-                                                    (g (descInitial desc))
-                                                    metrics
-                            }
+        modifyInner g = metricModify metric $ \v -> v {
+                vectorMetrics = Map.insertWith
+                                    (\_ old -> g old)
+                                    label
+                                    (g (descInitial $ vectorInnerDesc v))
+                                    (vectorMetrics v)
+            }
 
         -- Craft a new metric that when modified will update the value in the
         -- vector's map of inner metric states.
         innerMetric = Metric {metricModify = modifyInner}
+
+removeLabel :: (Label label, MonadMetric m)
+            => Metric (Vector label metric) -> label -> m ()
+removeLabel metric label = doIO $ metricModify metric $ \v -> v {
+        vectorMetrics = Map.delete label (vectorMetrics v)
+    }
+
+clearLabels :: (Label label, MonadMetric m)
+            => Metric (Vector label metric) -> m ()
+clearLabels metric = doIO $ metricModify metric $ \v -> v {
+        vectorMetrics = Map.empty
+    }
