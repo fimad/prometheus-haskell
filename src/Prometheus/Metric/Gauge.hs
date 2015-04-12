@@ -10,43 +10,47 @@ module Prometheus.Metric.Gauge (
 
 import Prometheus.Info
 import Prometheus.Metric
+import Prometheus.Metric.TVar
 import Prometheus.MonadMetric
 
+import qualified Control.Concurrent.STM as STM
 import qualified Data.Scientific as Scientific
 
 
-newtype Gauge = MkGauge (Scientific.Scientific)
-
-instance Show Gauge where
-    show (MkGauge s) = show s
+newtype Gauge = MkGauge (STM.TVar Scientific.Scientific)
 
 gauge :: Info -> MetricDesc Gauge
-gauge info = MetricDesc {
-        descDump    = defaultMetricDump
-    ,   descInfo    = info
-    ,   descInitial = MkGauge 0
-    ,   descType    = "gauge"
-    }
+gauge info = do
+    valueTVar <- STM.newTVarIO 0
+    return Metric {
+            handle = MkGauge valueTVar
+        ,   collect = collectTVar info GaugeType valueTVar
+        }
+
+withGauge :: MonadMetric m
+          => Metric Gauge
+          -> (Scientific.Scientific -> Scientific.Scientific)
+          -> m ()
+withGauge (Metric {handle = MkGauge valueTVar}) f =
+    doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
 
 addGauge :: (MonadMetric m, RealFloat r) => r -> Metric Gauge -> m ()
-addGauge x gauge = doIO $ metricModify gauge add
-    where add (MkGauge i) = r `seq` (i + r) `seq` MkGauge (i + r)
+addGauge x gauge = withGauge gauge add
+    where add i = r `seq` i + r
           r = Scientific.fromFloatDigits x
 
 subGauge :: (MonadMetric m, RealFloat r) => r -> Metric Gauge -> m ()
-subGauge x gauge = doIO $ metricModify gauge sub
-    where sub (MkGauge i) = r `seq` (i - r) `seq` MkGauge (i - r)
+subGauge x gauge = withGauge gauge sub
+    where sub i = r `seq` i - r
           r = Scientific.fromFloatDigits x
 
 incGauge :: MonadMetric m => Metric Gauge -> m ()
-incGauge gauge = doIO $ metricModify gauge inc
-    where inc (MkGauge i) = (i + 1) `seq` MkGauge (i + 1)
+incGauge gauge = withGauge gauge (+ 1)
 
 decGauge :: MonadMetric m => Metric Gauge -> m ()
-decGauge gauge = doIO $ metricModify gauge dec
-    where dec (MkGauge i) = (i - 1) `seq` MkGauge (i - 1)
+decGauge gauge = withGauge gauge (+ (-1))
 
 setGauge :: (MonadMetric m, RealFloat r) => r -> Metric Gauge -> m ()
-setGauge r gauge = doIO $ metricModify gauge set
-    where set _ = real `seq` MkGauge real
+setGauge r gauge = withGauge gauge set
+    where set _ = real
           real = Scientific.fromFloatDigits r

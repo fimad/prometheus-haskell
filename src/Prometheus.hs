@@ -2,13 +2,16 @@ module Prometheus (
     Info (..)
 ,   Metric
 ,   MetricDesc
+,   Sample
 
 ,   MetricT
 ,   MonadMetric
 
 ,   register
 ,   unsafeRegister
-,   dumpMetrics
+,   collectMetrics
+
+,   exportMetricsAsText
 
 ,   Counter
 ,   counter
@@ -42,6 +45,7 @@ module Prometheus (
 ,   Label9
 ) where
 
+import Prometheus.Export.Text
 import Prometheus.Info
 import Prometheus.Label
 import Prometheus.Metric

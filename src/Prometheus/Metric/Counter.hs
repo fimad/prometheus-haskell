@@ -6,22 +6,26 @@ module Prometheus.Metric.Counter (
 
 import Prometheus.Info
 import Prometheus.Metric
+import Prometheus.Metric.TVar
 import Prometheus.MonadMetric
 
+import qualified Control.Concurrent.STM as STM
 
-newtype Counter = MkCounter Integer
 
-instance Show Counter where
-    show (MkCounter i) = show i
+newtype Counter = MkCounter (STM.TVar Integer)
 
 counter :: Info -> MetricDesc Counter
-counter info = MetricDesc {
-        descDump    = defaultMetricDump
-    ,   descInfo    = info
-    ,   descInitial = MkCounter 0
-    ,   descType    = "counter"
-    }
+counter info = do
+    valueTVar <- STM.newTVarIO 0
+    return Metric {
+            handle = MkCounter valueTVar
+        ,   collect = collectTVar info CounterType valueTVar
+        }
+
+withCounter :: MonadMetric m => Metric Counter -> (Integer -> Integer) -> m ()
+withCounter (Metric {handle = MkCounter valueTVar}) f =
+    doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
 
 incCounter :: MonadMetric m => Metric Counter -> m ()
-incCounter counter = doIO $ metricModify counter inc
-    where inc (MkCounter i) = (i + 1) `seq` MkCounter (i + 1)
+incCounter counter = withCounter counter inc
+    where inc i = i + 1

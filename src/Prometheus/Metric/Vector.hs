@@ -6,32 +6,26 @@ module Prometheus.Metric.Vector (
 ,   clearLabels
 ) where
 
-import Prometheus.Info
 import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.MonadMetric
 
-import Data.List (intersperse)
-import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Lazy.UTF8 as LBS
+import Control.Applicative ((<$>))
+import qualified Control.Concurrent.STM as STM
 import qualified Data.Map.Strict as Map
 
 
-data Vector l m = MkVector {
-        vectorKeys      :: l
-    ,   vectorInnerDesc :: MetricDesc m
-    ,   vectorMetrics   :: Map.Map l m
-    }
+type VectorState l m = (MetricDesc m, Map.Map l (Metric m))
 
-vector :: Label l
-       => (Info -> MetricDesc m) -> l -> Info -> MetricDesc (Vector l m)
-vector mkMetric labelKeys info = checkLabelKeys labelKeys MetricDesc {
-        descDump    = dumpVector
-    ,   descInfo    = info
-    ,   descInitial = MkVector labelKeys innerMetric Map.empty
-    ,   descType    = descType innerMetric
-    }
-    where innerMetric = mkMetric info
+data Vector l m = MkVector (STM.TVar (VectorState l m))
+
+vector :: Label l => MetricDesc m -> l -> MetricDesc (Vector l m)
+vector desc labels = do
+    valueTVar <- checkLabelKeys labels $ STM.newTVarIO (desc, Map.empty)
+    return Metric {
+            handle  = MkVector valueTVar
+        ,   collect = collectVector labels valueTVar
+        }
 
 checkLabelKeys :: Label l => l -> a -> a
 checkLabelKeys keys r = foldl check r $ map fst $ labelPairs keys keys
@@ -53,45 +47,52 @@ checkLabelKeys keys r = foldl check r $ map fst $ labelPairs keys keys
                     || ('0' <= c && c <= '9')
                     || c == '_'
 
-dumpVector :: Label l => LabelPairs -> Info -> Vector l m -> LBS.ByteString
-dumpVector preLabels info (MkVector key desc metrics) =
-        LBS.concat $ intersperse (LBS.fromString "\n") dumpedInnerMetrics
+collectVector :: Label l => l -> STM.TVar (VectorState l m) -> IO [Sample]
+collectVector keys valueTVar = do
+    (_, metricMap) <- STM.atomically $ STM.readTVar valueTVar
+    joinSamples <$> concat <$> mapM collectInner (Map.assocs metricMap)
     where
-        labeledMetrics = Map.assocs metrics
-        dumpedInnerMetrics = map dumpInnerMetric labeledMetrics
-        dumpInnerMetric (label, metric) =
-                descDump desc (preLabels ++ labelPairs key label) info metric
+        collectInner (labels, metric) =   map (adjustSamples labels)
+                                      <$> collect metric
+
+        adjustSamples labels (Sample info ty samples) =
+            Sample info ty (map (prependLabels labels) samples)
+
+        prependLabels l (labels, value) = (labelPairs keys l ++ labels, value)
+
+        joinSamples []                       = []
+        joinSamples s@(Sample info ty _:_) = [Sample info ty (extract s)]
+
+        extract [] = []
+        extract (Sample _ _ s:xs) = s ++ extract xs
 
 withLabel :: (Label label, MonadMetric m)
           => Metric (Vector label metric)
           -> label
-          -> (Metric metric -> m ())
+          -> (Metric metric -> IO ())
           -> m ()
-withLabel metric label f = f innerMetric
-    where
-        -- Modify the inner state of the vector corresponding to the given
-        -- label. This will either apply g to the current value in the map, or
-        -- apply g to the initial value and insert it into the map.
-        modifyInner g = metricModify metric $ \v -> v {
-                vectorMetrics = Map.insertWith
-                                    (\_ old -> g old)
-                                    label
-                                    (g (descInitial $ vectorInnerDesc v))
-                                    (vectorMetrics v)
-            }
-
-        -- Craft a new metric that when modified will update the value in the
-        -- vector's map of inner metric states.
-        innerMetric = Metric {metricModify = modifyInner}
+withLabel (Metric {handle = MkVector valueTVar}) label f = doIO $ do
+    (desc, _) <- STM.atomically $ STM.readTVar valueTVar
+    newMetric <- desc
+    metric <- STM.atomically $ do
+        (_, metricMap) <- STM.readTVar valueTVar
+        let maybeMetric = Map.lookup label metricMap
+        case maybeMetric of
+            Just metric -> return metric
+            Nothing     -> do
+                let newValue = (desc, Map.insert label newMetric metricMap)
+                STM.writeTVar valueTVar newValue
+                return newMetric
+    f metric
 
 removeLabel :: (Label label, MonadMetric m)
             => Metric (Vector label metric) -> label -> m ()
-removeLabel metric label = doIO $ metricModify metric $ \v -> v {
-        vectorMetrics = Map.delete label (vectorMetrics v)
-    }
+removeLabel (Metric {handle = MkVector valueTVar}) label =
+    doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
+    where f (desc, metricMap) = (desc, Map.delete label metricMap)
 
 clearLabels :: (Label label, MonadMetric m)
             => Metric (Vector label metric) -> m ()
-clearLabels metric = doIO $ metricModify metric $ \v -> v {
-        vectorMetrics = Map.empty
-    }
+clearLabels (Metric {handle = MkVector valueTVar}) =
+    doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
+    where f (desc, _) = (desc, Map.empty)

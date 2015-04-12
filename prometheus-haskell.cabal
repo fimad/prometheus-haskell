@@ -27,9 +27,11 @@ library
   other-modules:
       Prometheus.Info
     , Prometheus.Label
+    , Prometheus.Export.Text
     , Prometheus.Metric
     , Prometheus.Metric.Counter
     , Prometheus.Metric.Gauge
+    , Prometheus.Metric.TVar
     , Prometheus.Metric.Vector
     , Prometheus.MonadMetric
     , Prometheus.Registry
