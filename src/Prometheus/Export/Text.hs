@@ -28,9 +28,13 @@ exportSampleGroup (SampleGroup info ty samples) =
         name = metricName info
         help = metricHelp info
         prefix =  BS.fromString $ unlines [
-                "# HELP " ++ name ++ " " ++ help
+                "# HELP " ++ name ++ " " ++ escape help
             ,   "# TYPE " ++ name ++ " " ++ show ty
             ]
+        escape []        = []
+        escape ('\n':xs) = '\\' : 'n' : escape xs
+        escape ('\\':xs) = '\\' : '\\' : escape xs
+        escape (x:xs)    = x : escape xs
 
 exportSamples :: [Sample] -> BS.ByteString
 exportSamples = BS.intercalate (BS.fromString "\n") . map exportSample
