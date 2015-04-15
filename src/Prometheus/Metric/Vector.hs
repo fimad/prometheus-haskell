@@ -15,12 +15,12 @@ import qualified Control.Concurrent.STM as STM
 import qualified Data.Map.Strict as Map
 
 
-type VectorState l m = (MetricDesc m, Map.Map l (Metric m))
+type VectorState l m = (MetricGen m, Map.Map l (Metric m))
 
 data Vector l m = MkVector (STM.TVar (VectorState l m))
 
-vector :: Label l => MetricDesc m -> l -> MetricDesc (Vector l m)
-vector desc labels = do
+vector :: Label l => l -> MetricGen m -> MetricGen (Vector l m)
+vector labels desc = do
     valueTVar <- checkLabelKeys labels $ STM.newTVarIO (desc, Map.empty)
     return Metric {
             handle  = MkVector valueTVar
@@ -47,24 +47,28 @@ checkLabelKeys keys r = foldl check r $ map fst $ labelPairs keys keys
                     || ('0' <= c && c <= '9')
                     || c == '_'
 
-collectVector :: Label l => l -> STM.TVar (VectorState l m) -> IO [Sample]
+-- TODO(will): This currently makes the assumption that all the types and info
+-- for all sample groups returned by a metric's collect method will be the same.
+-- It is not clear that this will always be a valid assumption.
+collectVector :: Label l => l -> STM.TVar (VectorState l m) -> IO [SampleGroup]
 collectVector keys valueTVar = do
     (_, metricMap) <- STM.atomically $ STM.readTVar valueTVar
     joinSamples <$> concat <$> mapM collectInner (Map.assocs metricMap)
     where
-        collectInner (labels, metric) =   map (adjustSamples labels)
-                                      <$> collect metric
+        collectInner (labels, metric) =
+            map (adjustSamples labels) <$> collect metric
 
-        adjustSamples labels (Sample info ty samples) =
-            Sample info ty (map (prependLabels labels) samples)
+        adjustSamples labels (SampleGroup info ty samples) =
+            SampleGroup info ty (map (prependLabels labels) samples)
 
-        prependLabels l (labels, value) = (labelPairs keys l ++ labels, value)
+        prependLabels l (Sample name labels value) =
+            Sample name (labelPairs keys l ++ labels) value
 
-        joinSamples []                       = []
-        joinSamples s@(Sample info ty _:_) = [Sample info ty (extract s)]
+        joinSamples []                      = []
+        joinSamples s@(SampleGroup i t _:_) = [SampleGroup i t (extract s)]
 
         extract [] = []
-        extract (Sample _ _ s:xs) = s ++ extract xs
+        extract (SampleGroup _ _ s:xs) = s ++ extract xs
 
 withLabel :: (Label label, MonadMetric m)
           => Metric (Vector label metric)

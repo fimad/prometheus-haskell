@@ -1,8 +1,9 @@
 module Prometheus (
     Info (..)
 ,   Metric
-,   MetricDesc
+,   MetricGen
 ,   Sample
+,   SampleGroup
 
 ,   MetricT
 ,   MonadMetric

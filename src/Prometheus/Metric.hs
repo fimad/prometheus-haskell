@@ -1,7 +1,8 @@
 module Prometheus.Metric (
     Metric (..)
-,   MetricDesc
+,   MetricGen
 ,   Sample (..)
+,   SampleGroup (..)
 ,   Type (..)
 ) where
 
@@ -20,12 +21,15 @@ instance Show Type where
     show HistogramType = "histogram"
     show UntypedType   = "untyped"
 
-data Sample = Sample Info Type [(LabelPairs, BS.ByteString)]
+data Sample = Sample String LabelPairs BS.ByteString
     deriving (Show)
 
-type MetricDesc s = IO (Metric s)
+data SampleGroup = SampleGroup Info Type [Sample]
+    deriving (Show)
+
+type MetricGen s = IO (Metric s)
 
 data Metric s = Metric {
         handle  :: s
-    ,   collect :: IO [Sample]
+    ,   collect :: IO [SampleGroup]
     }

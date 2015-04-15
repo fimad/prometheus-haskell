@@ -19,7 +19,7 @@ import qualified Data.Scientific as Scientific
 
 newtype Gauge = MkGauge (STM.TVar Scientific.Scientific)
 
-gauge :: Info -> MetricDesc Gauge
+gauge :: Info -> MetricGen Gauge
 gauge info = do
     valueTVar <- STM.newTVarIO 0
     return Metric {

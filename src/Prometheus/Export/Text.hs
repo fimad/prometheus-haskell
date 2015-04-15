@@ -15,16 +15,16 @@ import qualified Data.ByteString.UTF8 as BS
 exportMetricsAsText :: IO BS.ByteString
 exportMetricsAsText = do
     samples <- collectMetrics
-    let exportedSamples = map exportSample samples ++ [BS.empty]
+    let exportedSamples = map exportSampleGroup samples ++ [BS.empty]
     return $ BS.concat $ intersperse (BS.fromString "\n") exportedSamples
 
-exportSample :: Sample -> BS.ByteString
-exportSample (Sample info ty subsamples) =
-    if BS.null exportedSubsambples
+exportSampleGroup :: SampleGroup -> BS.ByteString
+exportSampleGroup (SampleGroup info ty samples) =
+    if BS.null exportedSamples
         then BS.empty
-        else prefix `BS.append` exportedSubsambples
+        else prefix `BS.append` exportedSamples
     where
-        exportedSubsambples = exportSubSamples info subsamples
+        exportedSamples = exportSamples samples
         name = metricName info
         help = metricHelp info
         prefix =  BS.fromString $ unlines [
@@ -32,15 +32,15 @@ exportSample (Sample info ty subsamples) =
             ,   "# TYPE " ++ name ++ " " ++ show ty
             ]
 
-exportSubSamples :: Info -> [(LabelPairs, BS.ByteString)] -> BS.ByteString
-exportSubSamples info = BS.intercalate (BS.fromString "\n") . map (exportSubSample info)
+exportSamples :: [Sample] -> BS.ByteString
+exportSamples = BS.intercalate (BS.fromString "\n") . map exportSample
 
-exportSubSample :: Info -> (LabelPairs, BS.ByteString) -> BS.ByteString
-exportSubSample info ([], value) = BS.concat [
-        BS.fromString $ metricName info, BS.fromString " ", value
+exportSample :: Sample -> BS.ByteString
+exportSample (Sample name [] value) = BS.concat [
+        BS.fromString name, BS.fromString " ", value
     ]
-exportSubSample info (labels, value) = BS.concat [
-        BS.fromString $ metricName info
+exportSample (Sample name labels value) = BS.concat [
+        BS.fromString name
     ,   BS.fromString "{", exportLabels labels, BS.fromString "} "
     ,   value
     ]
