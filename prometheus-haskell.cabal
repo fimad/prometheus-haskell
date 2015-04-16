@@ -31,6 +31,7 @@ library
     , Prometheus.Metric
     , Prometheus.Metric.Counter
     , Prometheus.Metric.Gauge
+    , Prometheus.Metric.Summary
     , Prometheus.Metric.TVar
     , Prometheus.Metric.Vector
     , Prometheus.MonadMetric

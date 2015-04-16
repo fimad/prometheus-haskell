@@ -32,6 +32,12 @@ module Prometheus (
 ,   removeLabel
 ,   clearLabels
 
+,   Summary
+,   Quantile
+,   summary
+,   observe
+,   defaultQuantiles
+
 ,   Label (..)
 ,   LabelPairs
 ,   Label0
@@ -52,6 +58,7 @@ import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.Metric.Counter
 import Prometheus.Metric.Gauge
+import Prometheus.Metric.Summary
 import Prometheus.Metric.Vector
 import Prometheus.MonadMetric
 import Prometheus.Registry
