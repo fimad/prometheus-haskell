@@ -20,9 +20,6 @@ expandBenches b = expand b [1, 10, 100, 1000, 10000]
     where
         expand b = map (\i -> bench (show i) (whnfIO (b i)))
 
-counterBGroup :: Benchmark
-counterBGroup = bgroup "incCounter" $ expandBenches incCounterThenCollect
-
 incCounterThenCollect :: Int -> IO [SampleGroup]
 incCounterThenCollect i = do
     c <- counter (Info "name" "help")
