@@ -71,11 +71,11 @@ collectVector keys valueTVar = do
         extract (SampleGroup _ _ s:xs) = s ++ extract xs
 
 withLabel :: (Label label, MonadMetric m)
-          => Metric (Vector label metric)
-          -> label
+          => label
           -> (Metric metric -> IO ())
+          -> Metric (Vector label metric)
           -> m ()
-withLabel (Metric {handle = MkVector valueTVar}) label f = doIO $ do
+withLabel label f (Metric {handle = MkVector valueTVar}) = doIO $ do
     (desc, _) <- STM.atomically $ STM.readTVar valueTVar
     newMetric <- desc
     metric <- STM.atomically $ do

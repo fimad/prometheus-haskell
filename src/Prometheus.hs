@@ -2,14 +2,16 @@ module Prometheus (
     Info (..)
 ,   Metric
 ,   MetricGen
-,   Sample
-,   SampleGroup
+,   Sample (..)
+,   SampleGroup (..)
+,   SampleType (..)
 
 ,   MetricT
 ,   MonadMetric
 
 ,   register
 ,   unsafeRegister
+,   unregisterAll
 ,   collectMetrics
 
 ,   exportMetricsAsText

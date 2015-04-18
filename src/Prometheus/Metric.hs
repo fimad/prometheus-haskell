@@ -3,7 +3,7 @@ module Prometheus.Metric (
 ,   MetricGen
 ,   Sample (..)
 ,   SampleGroup (..)
-,   Type (..)
+,   SampleType (..)
 ) where
 
 import Prometheus.Info
@@ -12,9 +12,14 @@ import Prometheus.Label
 import qualified Data.ByteString as BS
 
 
-data Type = CounterType | GaugeType | SummaryType | HistogramType | UntypedType
+data SampleType
+    = CounterType
+    | GaugeType
+    | SummaryType
+    | HistogramType
+    | UntypedType
 
-instance Show Type where
+instance Show SampleType where
     show CounterType   = "counter"
     show GaugeType     = "gauge"
     show SummaryType   = "summary"
@@ -24,7 +29,7 @@ instance Show Type where
 data Sample = Sample String LabelPairs BS.ByteString
     deriving (Show)
 
-data SampleGroup = SampleGroup Info Type [Sample]
+data SampleGroup = SampleGroup Info SampleType [Sample]
     deriving (Show)
 
 type MetricGen s = IO (Metric s)

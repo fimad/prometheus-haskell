@@ -2,6 +2,7 @@ module Prometheus.Registry (
     register
 ,   unsafeRegister
 ,   collectMetrics
+,   unregisterAll
 ) where
 
 import Prometheus.Metric
@@ -28,6 +29,9 @@ register desc = do
 
 unsafeRegister :: MetricGen s -> Metric s
 unsafeRegister = unsafePerformIO . register
+
+unregisterAll :: IO ()
+unregisterAll = STM.atomically $ STM.writeTVar globalRegistry []
 
 collectMetrics :: IO [SampleGroup]
 collectMetrics = do

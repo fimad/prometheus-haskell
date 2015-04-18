@@ -9,7 +9,7 @@ import qualified Control.Concurrent.STM as STM
 import qualified Data.ByteString.UTF8 as BS
 
 
-collectTVar :: Show s => Info -> Type -> STM.TVar s -> IO [SampleGroup]
+collectTVar :: Show s => Info -> SampleType -> STM.TVar s -> IO [SampleGroup]
 collectTVar info ty valueTVar = STM.atomically $ do
     value <- STM.readTVar valueTVar
     let sample = Sample (metricName info) [] (BS.fromString $ show value)

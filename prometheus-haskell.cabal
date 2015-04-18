@@ -46,3 +46,14 @@ library
     , transformers
     , utf8-string
   ghc-options: -W
+
+test-suite spec
+  Type:              exitcode-stdio-1.0
+  Hs-source-dirs:    tests
+  Main-is:           Spec.hs
+  build-depends:
+      base               >=4.6 && <4.7
+    , hspec
+    , prometheus-client
+    , bytestring
+    , utf8-string
