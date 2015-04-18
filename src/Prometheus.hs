@@ -1,6 +1,6 @@
 module Prometheus (
     Info (..)
-,   Metric
+,   Metric (..)
 ,   MetricGen
 ,   Sample (..)
 ,   SampleGroup (..)

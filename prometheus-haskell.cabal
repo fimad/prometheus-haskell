@@ -57,3 +57,16 @@ test-suite spec
     , prometheus-client
     , bytestring
     , utf8-string
+
+benchmark bench
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   benchmarks
+  main-is:          Main.hs
+  build-depends:
+      base               >=4.6 && <4.7
+    , bytestring
+    , criterion
+    , hspec
+    , prometheus-client
+    , random
+    , utf8-string
