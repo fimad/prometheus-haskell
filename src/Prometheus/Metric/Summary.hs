@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 module Prometheus.Metric.Summary (
     Summary
 ,   Quantile
@@ -109,7 +108,7 @@ insert value estimator@(Estimator oldCount oldSum quantiles items)
 
 compress :: Estimator -> Estimator
 compress est@(Estimator _ _ _ items) = est {
-        estItems = compressItems [] $ items
+        estItems = compressItems [] items
     }
     where
         compressItems prev []  = reverse prev
@@ -118,7 +117,7 @@ compress est@(Estimator _ _ _ items) = est {
             | g1 + g2 + d2 < inv = compressItems prev (Item v2 (g1 + g2) d2:xs)
             | otherwise          = compressItems (i1:prev) (i2:xs)
             where
-                r1 = sum $ map itemG $ prev
+                r1 = sum $ map itemG prev
                 inv = invariant est r1
 
 query :: Estimator -> Double -> Double
@@ -141,4 +140,4 @@ invariant (Estimator count _ quantiles _) r = minimum $ map fj quantiles
     where
         n = fromIntegral count
         fj (q, e) | q * n <= r && r <= n = 2 * e * r / q
-        fj (q, e) | otherwise            = 2 * e * (n - r) / (1 - q)
+                  | otherwise            = 2 * e * (n - r) / (1 - q)
