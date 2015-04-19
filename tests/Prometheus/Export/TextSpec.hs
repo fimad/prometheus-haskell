@@ -54,7 +54,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "test_counter{handler=\"root\",method=\"GET\"} 1"
                 ])
       it "escapes newlines and slashes from help strings" $ do
-            m <- register $ counter (Info "metric" "help \n \\string")
+            _ <- register $ counter (Info "metric" "help \n \\string")
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
                     "# HELP metric help \\n \\\\string"

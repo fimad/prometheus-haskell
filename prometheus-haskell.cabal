@@ -56,7 +56,9 @@ test-suite spec
     , hspec
     , prometheus-client
     , bytestring
+    , random-shuffle
     , utf8-string
+  ghc-options: -W -Werror
 
 benchmark bench
   type:             exitcode-stdio-1.0
@@ -70,3 +72,4 @@ benchmark bench
     , prometheus-client
     , random
     , utf8-string
+  ghc-options: -W -Werror

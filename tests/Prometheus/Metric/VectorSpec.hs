@@ -5,10 +5,7 @@ module Prometheus.Metric.VectorSpec (
 import Prometheus
 
 import Control.Monad
-import Control.Applicative
-import GHC.Exts (sortWith)
 import Test.Hspec
-import qualified Data.ByteString.UTF8 as BS
 
 spec :: Spec
 spec = describe "Prometheus.Metric.Vector" $ do
@@ -25,5 +22,5 @@ spec = describe "Prometheus.Metric.Vector" $ do
             m <- vector "a" $ counter (Info "name" "help")
             replicateM_ 47 $ withLabel "foo" incCounter m
             replicateM_ 42 $ withLabel "bar" incCounter m
-            value <- sortWith fst <$> getVectorWith getCounter m
-            value `shouldBe` [("bar", 42), ("foo", 47)]
+            value <- getVectorWith getCounter m
+            value `shouldMatchList` [("bar", 42), ("foo", 47)]

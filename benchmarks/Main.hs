@@ -3,7 +3,6 @@ import Prometheus
 import Control.Monad
 import Criterion.Main
 import System.Random
-import qualified Data.ByteString as BS
 
 
 main :: IO ()

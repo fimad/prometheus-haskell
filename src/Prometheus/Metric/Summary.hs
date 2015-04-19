@@ -20,7 +20,6 @@ import Prometheus.Metric
 import Prometheus.MonadMetric
 
 import Data.Int (Int64)
-import Data.List (partition)
 import qualified Control.Concurrent.STM as STM
 import qualified Data.ByteString.UTF8 as BS
 
@@ -38,7 +37,9 @@ summary info quantiles = do
 withSummary :: MonadMetric m
             => Metric Summary -> (Estimator -> Estimator) -> m ()
 withSummary (Metric {handle = MkSummary valueTVar}) f =
-    doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
+    doIO $ STM.atomically $ do
+        STM.modifyTVar' valueTVar compress
+        STM.modifyTVar' valueTVar f
 
 observe :: MonadMetric m => Double -> Metric Summary -> m ()
 observe v summary = withSummary summary (insert v)
@@ -99,22 +100,25 @@ emptyEstimator :: [Quantile] -> Estimator
 emptyEstimator quantiles = Estimator 0 0 quantiles []
 
 insert :: Double -> Estimator -> Estimator
-insert value estimator@(Estimator oldCount oldSum quantiles items)
-    | null smaller = newEstimator $ insertBag itemEnd items
-    | null larger  = newEstimator $ insertBag itemEnd items
-    | otherwise    = newEstimator $ insertBag itemMiddle items
+insert value estimator@(Estimator oldCount oldSum quantiles items) =
+        newEstimator $ insertItem 0 items
     where
         newEstimator = Estimator (oldCount + 1) (oldSum + value) quantiles
 
-        itemEnd = Item value 1 0
-        itemMiddle = Item value 1 $ invariant estimator r
+        insertItem _ []            = [Item value 1 0]
+        insertItem r [x]
+            | r == 0               = Item value 1 0 : [x]
+            | otherwise            = x : [Item value 1 0]
+        insertItem r (x:y:xs)
+            | value <= itemValue x = Item value 1 0 : x : y : xs
+            | value <= itemValue y = x : Item value 1 (calcD r) : y : xs
+            | otherwise            = x : insertItem (itemG x + r) (y : xs)
 
-        (smaller, larger) = partition ((< value) . itemValue) items
-        r = sum $ map itemG smaller
+        calcD r = fromIntegral
+                $ floor (invariant estimator {
+                    estCount = 1 + estCount estimator
+                } r) - 1
 
-        insertBag a [] = [a]
-        insertBag a (x:xs) | a < x     = a : x : xs
-                           | otherwise = x : insertBag a xs
 
 compress :: Estimator -> Estimator
 compress est@(Estimator _ _ _ items) = est {
@@ -133,17 +137,19 @@ compress est@(Estimator _ _ _ items) = est {
 query :: Estimator -> Double -> Double
 query est@(Estimator count _ _ items) q = findQuantile rs items
     where
-        rs = zipWith (+) (0 : rs) (map itemG items)
+        rs = 0 : zipWith (+) rs (map itemG items)
 
         n = fromIntegral count
         f = invariant est
 
-        findQuantile _        []            = 0
-        findQuantile _        [a]           = itemValue a
+        bound = q * n + f (q * n) / 2
+
+        findQuantile _        []  = 0 / 0  -- NaN
+        findQuantile _        [a] = itemValue a
         findQuantile (_:r:rs) (a:b@(Item _ g d):xs)
-            | r + g + d > q * n + f (q * n) = itemValue a
-            | otherwise                     = findQuantile (r:rs) (b:xs)
-        findQuantile _        _             = error "Unmatched R and items"
+            | r + g + d > bound   = itemValue a
+            | otherwise           = findQuantile (r:rs) (b:xs)
+        findQuantile _        _   = error "Query impossibility"
 
 invariant :: Estimator -> Double -> Double
 invariant (Estimator count _ quantiles _) r = minimum $ map fj quantiles

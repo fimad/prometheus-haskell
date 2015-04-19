@@ -6,7 +6,6 @@ import Prometheus
 
 import Control.Monad
 import Test.Hspec
-import qualified Data.ByteString.UTF8 as BS
 
 spec :: Spec
 spec = describe "Prometheus.Metric.Counter" $ do
