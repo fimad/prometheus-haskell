@@ -4,12 +4,14 @@ module Prometheus.Metric.Vector (
 ,   withLabel
 ,   removeLabel
 ,   clearLabels
+,   getVectorWith
 ) where
 
 import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.MonadMetric
 
+import Data.Traversable (forM)
 import Control.Applicative ((<$>))
 import qualified Control.Concurrent.STM as STM
 import qualified Data.Map.Strict as Map
@@ -69,6 +71,13 @@ collectVector keys valueTVar = do
 
         extract [] = []
         extract (SampleGroup _ _ s:xs) = s ++ extract xs
+
+getVectorWith :: (Metric metric -> IO a)
+              -> Metric (Vector label metric)
+              -> IO [(label, a)]
+getVectorWith f (Metric {handle = MkVector valueTVar}) = do
+    (_, metricMap) <- STM.atomically $ STM.readTVar valueTVar
+    Map.assocs <$> forM metricMap f
 
 withLabel :: (Label label, MonadMetric m)
           => label

@@ -2,8 +2,9 @@ module Prometheus.Metric.Summary (
     Summary
 ,   Quantile
 ,   summary
-,   observe
 ,   defaultQuantiles
+,   observe
+,   getSummary
 
 ,   dumpEstimator
 
@@ -41,6 +42,15 @@ withSummary (Metric {handle = MkSummary valueTVar}) f =
 
 observe :: MonadMetric m => Double -> Metric Summary -> m ()
 observe v summary = withSummary summary (insert v)
+
+getSummary :: Metric Summary -> IO [(Double, Double)]
+getSummary (Metric {handle = MkSummary valueTVar}) = do
+    estimator <- STM.atomically $ do
+        STM.modifyTVar' valueTVar compress
+        STM.readTVar valueTVar
+    let quantiles = map fst $ estQuantiles estimator
+    let values = map (query estimator) quantiles
+    return $ zip quantiles values
 
 collectSummary :: Info -> STM.TVar Estimator -> IO [SampleGroup]
 collectSummary info valueTVar = STM.atomically $ do

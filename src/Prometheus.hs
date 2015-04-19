@@ -19,6 +19,7 @@ module Prometheus (
 ,   Counter
 ,   counter
 ,   incCounter
+,   getCounter
 
 ,   Gauge
 ,   gauge
@@ -27,18 +28,21 @@ module Prometheus (
 ,   addGauge
 ,   subGauge
 ,   setGauge
+,   getGauge
 
 ,   Vector
 ,   vector
 ,   withLabel
 ,   removeLabel
 ,   clearLabels
+,   getVectorWith
 
 ,   Summary
 ,   Quantile
 ,   summary
-,   observe
 ,   defaultQuantiles
+,   observe
+,   getSummary
 
 ,   Label (..)
 ,   LabelPairs

@@ -2,6 +2,7 @@ module Prometheus.Metric.Counter (
     Counter
 ,   counter
 ,   incCounter
+,   getCounter
 ) where
 
 import Prometheus.Info
@@ -30,3 +31,7 @@ withCounter (Metric {handle = MkCounter valueTVar}) f =
 incCounter :: MonadMetric m => Metric Counter -> m ()
 incCounter counter = withCounter counter inc
     where inc i = i + 1
+
+getCounter :: Metric Counter -> IO Int64
+getCounter (Metric {handle = MkCounter valueTVar}) =
+    STM.atomically $ STM.readTVar valueTVar

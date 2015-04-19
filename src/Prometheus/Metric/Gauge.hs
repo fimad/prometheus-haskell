@@ -6,6 +6,7 @@ module Prometheus.Metric.Gauge (
 ,   addGauge
 ,   subGauge
 ,   setGauge
+,   getGauge
 ) where
 
 import Prometheus.Info
@@ -50,3 +51,7 @@ decGauge gauge = withGauge gauge (+ (-1))
 setGauge :: MonadMetric m => Double -> Metric Gauge -> m ()
 setGauge r gauge = withGauge gauge set
     where set _ = r
+
+getGauge :: Metric Gauge -> IO Double
+getGauge (Metric {handle = MkGauge valueTVar}) =
+    STM.atomically $ STM.readTVar valueTVar
