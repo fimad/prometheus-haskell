@@ -19,7 +19,7 @@ import qualified Control.Concurrent.STM as STM
 
 newtype Gauge = MkGauge (STM.TVar Double)
 
-gauge :: Info -> MetricGen Gauge
+gauge :: Info -> IO (Metric Gauge)
 gauge info = do
     valueTVar <- STM.newTVarIO 0
     return Metric {

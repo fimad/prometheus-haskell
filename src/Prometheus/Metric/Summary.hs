@@ -26,7 +26,7 @@ import qualified Data.ByteString.UTF8 as BS
 
 newtype Summary = MkSummary (STM.TVar Estimator)
 
-summary :: Info -> [Quantile] -> MetricGen Summary
+summary :: Info -> [Quantile] -> IO (Metric Summary)
 summary info quantiles = do
     valueTVar <- STM.newTVarIO (emptyEstimator quantiles)
     return Metric {

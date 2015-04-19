@@ -20,14 +20,14 @@ type Registry = [RegisteredMetric]
 globalRegistry :: STM.TVar Registry
 globalRegistry = unsafePerformIO $ STM.newTVarIO []
 
-register :: MetricGen s -> IO (Metric s)
+register :: IO (Metric s) -> IO (Metric s)
 register desc = do
     metric <- desc
     let addToRegistry = (MkRegisteredMetric metric :)
     STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
     return metric
 
-unsafeRegister :: MetricGen s -> Metric s
+unsafeRegister :: IO (Metric s) -> Metric s
 unsafeRegister = unsafePerformIO . register
 
 unregisterAll :: IO ()

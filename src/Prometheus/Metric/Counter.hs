@@ -16,7 +16,7 @@ import qualified Control.Concurrent.STM as STM
 
 newtype Counter = MkCounter (STM.TVar Int64)
 
-counter :: Info -> MetricGen Counter
+counter :: Info -> IO (Metric Counter)
 counter info = do
     valueTVar <- STM.newTVarIO 0
     return Metric {

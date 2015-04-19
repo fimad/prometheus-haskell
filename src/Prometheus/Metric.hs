@@ -1,6 +1,5 @@
 module Prometheus.Metric (
     Metric (..)
-,   MetricGen
 ,   Sample (..)
 ,   SampleGroup (..)
 ,   SampleType (..)
@@ -31,8 +30,6 @@ data Sample = Sample String LabelPairs BS.ByteString
 
 data SampleGroup = SampleGroup Info SampleType [Sample]
     deriving (Show)
-
-type MetricGen s = IO (Metric s)
 
 data Metric s = Metric {
         handle  :: s

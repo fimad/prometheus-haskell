@@ -17,11 +17,11 @@ import qualified Control.Concurrent.STM as STM
 import qualified Data.Map.Strict as Map
 
 
-type VectorState l m = (MetricGen m, Map.Map l (Metric m))
+type VectorState l m = (IO (Metric m), Map.Map l (Metric m))
 
 data Vector l m = MkVector (STM.TVar (VectorState l m))
 
-vector :: Label l => l -> MetricGen m -> MetricGen (Vector l m)
+vector :: Label l => l -> IO (Metric m) -> IO (Metric (Vector l m))
 vector labels desc = do
     valueTVar <- checkLabelKeys labels $ STM.newTVarIO (desc, Map.empty)
     return Metric {
