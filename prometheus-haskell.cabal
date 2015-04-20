@@ -20,7 +20,6 @@ library
       ExistentialQuantification
     , FlexibleInstances
     , GeneralizedNewtypeDeriving
-    , RankNTypes
     , TypeSynonymInstances
   exposed-modules:
       Prometheus
@@ -34,42 +33,54 @@ library
     , Prometheus.Metric.Summary
     , Prometheus.Metric.TVar
     , Prometheus.Metric.Vector
-    , Prometheus.MonadMetric
+    , Prometheus.MonadMonitor
     , Prometheus.Registry
   build-depends:
-      base               >=4.6 && <4.7
+      base               >=4.6 && <4.8
     , bytestring
     , containers
     , mtl
-    , scientific
     , stm                >=2.3
     , transformers
     , utf8-string
   ghc-options: -W
 
-test-suite spec
-  Type:              exitcode-stdio-1.0
-  Hs-source-dirs:    tests
-  Main-is:           Spec.hs
+test-suite doctest
+  type:                 exitcode-stdio-1.0
+  default-language:     Haskell2010
+  hs-source-dirs:       tests
+  ghc-options:          -Wall
+  main-is:              doctest.hs
   build-depends:
-      base               >=4.6 && <4.7
+      base
+    , doctest
+    , prometheus-client
+
+test-suite spec
+  type:              exitcode-stdio-1.0
+  default-language:  Haskell2010
+  hs-source-dirs:    tests
+  main-is:           Spec.hs
+  build-depends:
+      base               >=4.6 && <4.8
     , hspec
     , prometheus-client
     , bytestring
     , random-shuffle
     , utf8-string
-  ghc-options: -W -Werror
+  ghc-options: -W
 
 benchmark bench
   type:             exitcode-stdio-1.0
+  default-language: Haskell2010
   hs-source-dirs:   benchmarks
   main-is:          Main.hs
   build-depends:
-      base               >=4.6 && <4.7
+      base               >=4.6 && <4.8
     , bytestring
     , criterion
     , hspec
     , prometheus-client
     , random
     , utf8-string
-  ghc-options: -W -Werror
+  ghc-options: -W

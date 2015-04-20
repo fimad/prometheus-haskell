@@ -8,11 +8,15 @@ module Prometheus.Metric.Counter (
 import Prometheus.Info
 import Prometheus.Metric
 import Prometheus.Metric.TVar
-import Prometheus.MonadMetric
+import Prometheus.MonadMonitor
 
 import Data.Int (Int64)
 import qualified Control.Concurrent.STM as STM
 
+
+-- $setup
+-- >>> :module +Prometheus
+-- >>> unregisterAll
 
 newtype Counter = MkCounter (STM.TVar Int64)
 
@@ -24,11 +28,11 @@ counter info = do
         ,   collect = collectTVar info CounterType valueTVar
         }
 
-withCounter :: MonadMetric m => Metric Counter -> (Int64 -> Int64) -> m ()
+withCounter :: MonadMonitor m => Metric Counter -> (Int64 -> Int64) -> m ()
 withCounter (Metric {handle = MkCounter valueTVar}) f =
     doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
 
-incCounter :: MonadMetric m => Metric Counter -> m ()
+incCounter :: MonadMonitor m => Metric Counter -> m ()
 incCounter counter = withCounter counter inc
     where inc i = i + 1
 

@@ -17,7 +17,7 @@ module Prometheus.Metric.Summary (
 
 import Prometheus.Info
 import Prometheus.Metric
-import Prometheus.MonadMetric
+import Prometheus.MonadMonitor
 
 import Data.Int (Int64)
 import qualified Control.Concurrent.STM as STM
@@ -34,14 +34,14 @@ summary info quantiles = do
         ,   collect = collectSummary info valueTVar
         }
 
-withSummary :: MonadMetric m
+withSummary :: MonadMonitor m
             => Metric Summary -> (Estimator -> Estimator) -> m ()
 withSummary (Metric {handle = MkSummary valueTVar}) f =
     doIO $ STM.atomically $ do
         STM.modifyTVar' valueTVar compress
         STM.modifyTVar' valueTVar f
 
-observe :: MonadMetric m => Double -> Metric Summary -> m ()
+observe :: MonadMonitor m => Double -> Metric Summary -> m ()
 observe v summary = withSummary summary (insert v)
 
 getSummary :: Metric Summary -> IO [(Double, Double)]

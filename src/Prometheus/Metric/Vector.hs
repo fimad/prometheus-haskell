@@ -9,7 +9,7 @@ module Prometheus.Metric.Vector (
 
 import Prometheus.Label
 import Prometheus.Metric
-import Prometheus.MonadMetric
+import Prometheus.MonadMonitor
 
 import Data.Traversable (forM)
 import Control.Applicative ((<$>))
@@ -79,7 +79,7 @@ getVectorWith f (Metric {handle = MkVector valueTVar}) = do
     (_, metricMap) <- STM.atomically $ STM.readTVar valueTVar
     Map.assocs <$> forM metricMap f
 
-withLabel :: (Label label, MonadMetric m)
+withLabel :: (Label label, MonadMonitor m)
           => label
           -> (Metric metric -> IO ())
           -> Metric (Vector label metric)
@@ -98,13 +98,13 @@ withLabel label f (Metric {handle = MkVector valueTVar}) = doIO $ do
                 return newMetric
     f metric
 
-removeLabel :: (Label label, MonadMetric m)
+removeLabel :: (Label label, MonadMonitor m)
             => Metric (Vector label metric) -> label -> m ()
 removeLabel (Metric {handle = MkVector valueTVar}) label =
     doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
     where f (desc, metricMap) = (desc, Map.delete label metricMap)
 
-clearLabels :: (Label label, MonadMetric m)
+clearLabels :: (Label label, MonadMonitor m)
             => Metric (Vector label metric) -> m ()
 clearLabels (Metric {handle = MkVector valueTVar}) =
     doIO $ STM.atomically $ STM.modifyTVar' valueTVar f

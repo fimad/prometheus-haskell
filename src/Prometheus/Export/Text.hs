@@ -12,6 +12,23 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BS
 
 
+-- $setup
+-- >>> :module +Prometheus
+-- >>> unregisterAll
+
+-- | Export all registered metrics in the Prometheus 0.0.4 text exposition
+-- format.
+--
+-- For the full specification of the format, see the official Prometheus
+-- <http://prometheus.io/docs/instrumenting/exposition_formats/ documentation>.
+--
+-- >>> :m +Data.ByteString
+-- >>> myCounter <- registerIO $ counter (Info "my_counter" "Example counter")
+-- >>> incCounter myCounter
+-- >>> exportMetricsAsText >>= Data.ByteString.putStr
+-- # HELP my_counter Example counter
+-- # TYPE my_counter counter
+-- my_counter 1
 exportMetricsAsText :: IO BS.ByteString
 exportMetricsAsText = do
     samples <- collectMetrics

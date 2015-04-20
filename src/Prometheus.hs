@@ -1,24 +1,29 @@
+-- |
 module Prometheus (
-    Info (..)
-,   Metric (..)
-,   Sample (..)
-,   SampleGroup (..)
-,   SampleType (..)
 
-,   MetricT
-,   MonadMetric
+-- * Registry
 
+    registerIO
 ,   register
+,   unsafeRegisterIO
 ,   unsafeRegister
 ,   unregisterAll
 ,   collectMetrics
 
+-- * Exporting
+
 ,   exportMetricsAsText
+
+-- * Metrics
+
+-- ** Counter
 
 ,   Counter
 ,   counter
 ,   incCounter
 ,   getCounter
+
+-- ** Gauge
 
 ,   Gauge
 ,   gauge
@@ -29,12 +34,7 @@ module Prometheus (
 ,   setGauge
 ,   getGauge
 
-,   Vector
-,   vector
-,   withLabel
-,   removeLabel
-,   clearLabels
-,   getVectorWith
+-- ** Summary
 
 ,   Summary
 ,   Quantile
@@ -42,6 +42,17 @@ module Prometheus (
 ,   defaultQuantiles
 ,   observe
 ,   getSummary
+
+-- ** Vector
+
+,   Vector
+,   vector
+,   withLabel
+,   removeLabel
+,   clearLabels
+,   getVectorWith
+
+-- *** Labels
 
 ,   Label (..)
 ,   LabelPairs
@@ -55,6 +66,22 @@ module Prometheus (
 ,   Label7
 ,   Label8
 ,   Label9
+
+-- * Base data types
+
+,   Info (..)
+,   Metric (..)
+,   Sample (..)
+,   SampleGroup (..)
+,   SampleType (..)
+
+-- * Instrumenting pure code
+
+,   MonadMonitor (..)
+,   Monitor
+,   runMonitor
+,   MonitorT
+,   runMonitorT
 ) where
 
 import Prometheus.Export.Text
@@ -65,5 +92,5 @@ import Prometheus.Metric.Counter
 import Prometheus.Metric.Gauge
 import Prometheus.Metric.Summary
 import Prometheus.Metric.Vector
-import Prometheus.MonadMetric
+import Prometheus.MonadMonitor
 import Prometheus.Registry

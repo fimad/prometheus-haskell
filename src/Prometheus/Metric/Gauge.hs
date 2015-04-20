@@ -12,7 +12,7 @@ module Prometheus.Metric.Gauge (
 import Prometheus.Info
 import Prometheus.Metric
 import Prometheus.Metric.TVar
-import Prometheus.MonadMetric
+import Prometheus.MonadMonitor
 
 import qualified Control.Concurrent.STM as STM
 
@@ -27,28 +27,28 @@ gauge info = do
         ,   collect = collectTVar info GaugeType valueTVar
         }
 
-withGauge :: MonadMetric m
+withGauge :: MonadMonitor m
           => Metric Gauge
           -> (Double -> Double)
           -> m ()
 withGauge (Metric {handle = MkGauge valueTVar}) f =
     doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
 
-addGauge :: MonadMetric m => Double -> Metric Gauge -> m ()
+addGauge :: MonadMonitor m => Double -> Metric Gauge -> m ()
 addGauge x gauge = withGauge gauge add
     where add i = i `seq` x `seq` i + x
 
-subGauge :: MonadMetric m => Double -> Metric Gauge -> m ()
+subGauge :: MonadMonitor m => Double -> Metric Gauge -> m ()
 subGauge x gauge = withGauge gauge sub
     where sub i = i `seq` x `seq` i - x
 
-incGauge :: MonadMetric m => Metric Gauge -> m ()
+incGauge :: MonadMonitor m => Metric Gauge -> m ()
 incGauge gauge = withGauge gauge (+ 1)
 
-decGauge :: MonadMetric m => Metric Gauge -> m ()
+decGauge :: MonadMonitor m => Metric Gauge -> m ()
 decGauge gauge = withGauge gauge (+ (-1))
 
-setGauge :: MonadMetric m => Double -> Metric Gauge -> m ()
+setGauge :: MonadMonitor m => Double -> Metric Gauge -> m ()
 setGauge r gauge = withGauge gauge set
     where set _ = r
 

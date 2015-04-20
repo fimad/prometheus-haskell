@@ -11,7 +11,7 @@ spec :: Spec
 spec = before_ unregisterAll $ after_ unregisterAll $
   describe "Prometheus.Export.Text.exportMetricsAsText" $ do
       it "renders counters" $ do
-            m <- register $ counter (Info "test_counter" "help string")
+            m <- registerIO $ counter (Info "test_counter" "help string")
             incCounter m
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
@@ -20,7 +20,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "test_counter 1"
                 ])
       it "renders gauges" $ do
-            m <- register $ gauge (Info "test_gauge" "help string")
+            m <- registerIO $ gauge (Info "test_gauge" "help string")
             setGauge 47 m
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
@@ -29,7 +29,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "test_gauge 47.0"
                 ])
       it "renders summaries" $ do
-            m <- register $ summary (Info "metric" "help") defaultQuantiles
+            m <- registerIO $ summary (Info "metric" "help") defaultQuantiles
             observe 1 m
             observe 1 m
             observe 1 m
@@ -44,8 +44,8 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "metric_count 3"
                 ])
       it "renders vectors" $ do
-            m <- register $ vector ("handler", "method")
-                          $ counter (Info "test_counter" "help string")
+            m <- registerIO $ vector ("handler", "method")
+                            $ counter (Info "test_counter" "help string")
             withLabel ("root", "GET") incCounter m
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
@@ -54,7 +54,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "test_counter{handler=\"root\",method=\"GET\"} 1"
                 ])
       it "escapes newlines and slashes from help strings" $ do
-            _ <- register $ counter (Info "metric" "help \n \\string")
+            _ <- registerIO $ counter (Info "metric" "help \n \\string")
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
                     "# HELP metric help \\n \\\\string"
