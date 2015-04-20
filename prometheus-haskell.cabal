@@ -1,17 +1,20 @@
 name:                prometheus-client
 version:             0.1.0.0
 synopsis:            Haskell client library for http://prometheus.io.
--- description:
+description:         Haskell client library for http://prometheus.io.
 homepage:            https://github.com/fimad/prometheus-haskell
 license:             Apache-2.0
 license-file:        LICENSE
 author:              Will Coster
 maintainer:          willcoster@gmail.com
--- copyright:
+copyright:           2015 Will Coster
 category:            Network
 build-type:          Simple
--- extra-source-files:
 cabal-version:       >=1.10
+
+source-repository head
+  type:     git
+  location: https://github.com/fimad/prometheus-haskell
 
 library
   hs-source-dirs:      src/
