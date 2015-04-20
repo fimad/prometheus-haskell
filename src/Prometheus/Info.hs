@@ -4,6 +4,8 @@ module Prometheus.Info (
 ) where
 
 
+-- | Meta data about a metric including its name and a help string that
+-- describes the value that the metric is measuring.
 data Info = Info {
     metricName :: String
 ,   metricHelp :: String

@@ -14,8 +14,12 @@ module Prometheus.Label (
 ) where
 
 
+-- | A list of tuples where the first value is the label and the second is the
+-- value of that label.
 type LabelPairs = [(String, String)]
 
+-- | Label describes a class of types that can be used to as the label of
+-- a vector.
 class Ord l => Label l where
     labelPairs :: l -> l -> LabelPairs
 

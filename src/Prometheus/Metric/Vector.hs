@@ -21,6 +21,7 @@ type VectorState l m = (IO (Metric m), Map.Map l (Metric m))
 
 data Vector l m = MkVector (STM.TVar (VectorState l m))
 
+-- | Creates a new vector of metrics given a label.
 vector :: Label l => l -> IO (Metric m) -> IO (Metric (Vector l m))
 vector labels desc = do
     valueTVar <- checkLabelKeys labels $ STM.newTVarIO (desc, Map.empty)
@@ -79,6 +80,8 @@ getVectorWith f (Metric {handle = MkVector valueTVar}) = do
     (_, metricMap) <- STM.atomically $ STM.readTVar valueTVar
     Map.assocs <$> forM metricMap f
 
+-- | Given a label, applies an operation to the corresponding metric in the
+-- vector.
 withLabel :: (Label label, MonadMonitor m)
           => label
           -> (Metric metric -> IO ())
@@ -98,12 +101,14 @@ withLabel label f (Metric {handle = MkVector valueTVar}) = doIO $ do
                 return newMetric
     f metric
 
+-- | Removes a label from a vector.
 removeLabel :: (Label label, MonadMonitor m)
             => Metric (Vector label metric) -> label -> m ()
 removeLabel (Metric {handle = MkVector valueTVar}) label =
     doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
     where f (desc, metricMap) = (desc, Map.delete label metricMap)
 
+-- | Removes all labels from a vector.
 clearLabels :: (Label label, MonadMonitor m)
             => Metric (Vector label metric) -> m ()
 clearLabels (Metric {handle = MkVector valueTVar}) =

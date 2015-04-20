@@ -37,11 +37,7 @@ register metric = do
 -- | Registers a metric with the global metric registry or retrieves the
 -- currently registered metric with the same description.
 registerIO :: IO (Metric s) -> IO (Metric s)
-registerIO metricGen = do
-    metric <- metricGen
-    let addToRegistry = (MkRegisteredMetric metric :)
-    STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
-    return metric
+registerIO metricGen = metricGen >>= register
 
 -- | Registers a metric with the global metric registry or retrieves the
 -- currently registered metric with the same description.

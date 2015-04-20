@@ -26,6 +26,9 @@ import qualified Data.ByteString.UTF8 as BS
 
 newtype Summary = MkSummary (STM.TVar Estimator)
 
+-- | Creates a new summary metric with a given name, help string, and a list of
+-- quantiles. A reasonable set set of quantiles is provided by
+-- 'defaultQuantiles'.
 summary :: Info -> [Quantile] -> IO (Metric Summary)
 summary info quantiles = do
     valueTVar <- STM.newTVarIO (emptyEstimator quantiles)
@@ -41,9 +44,11 @@ withSummary (Metric {handle = MkSummary valueTVar}) f =
         STM.modifyTVar' valueTVar compress
         STM.modifyTVar' valueTVar f
 
+-- | Adds a new observation to a summary metric.
 observe :: MonadMonitor m => Double -> Metric Summary -> m ()
 observe v summary = withSummary summary (insert v)
 
+-- | Retrieves a list of tuples containing a quantile and its associated value.
 getSummary :: Metric Summary -> IO [(Double, Double)]
 getSummary (Metric {handle = MkSummary valueTVar}) = do
     estimator <- STM.atomically $ do
