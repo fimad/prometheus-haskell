@@ -39,7 +39,8 @@ library
     , Prometheus.MonadMonitor
     , Prometheus.Registry
   build-depends:
-      base               >=4.6 && <4.8
+      atomic-primops     >=0.4
+    , base               >=4.6 && <4.8
     , bytestring
     , containers
     , mtl
