@@ -11,23 +11,24 @@ import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.MonadMonitor
 
-import Data.Traversable (forM)
 import Control.Applicative ((<$>))
-import qualified Control.Concurrent.STM as STM
+import Data.Traversable (forM)
+import qualified Data.Atomics as Atomics
+import qualified Data.IORef as IORef
 import qualified Data.Map.Strict as Map
 
 
 type VectorState l m = (IO (Metric m), Map.Map l (Metric m))
 
-data Vector l m = MkVector (STM.TVar (VectorState l m))
+data Vector l m = MkVector (IORef.IORef (VectorState l m))
 
 -- | Creates a new vector of metrics given a label.
 vector :: Label l => l -> IO (Metric m) -> IO (Metric (Vector l m))
-vector labels desc = do
-    valueTVar <- checkLabelKeys labels $ STM.newTVarIO (desc, Map.empty)
+vector labels gen = do
+    ioref <- checkLabelKeys labels $ IORef.newIORef (gen, Map.empty)
     return Metric {
-            handle  = MkVector valueTVar
-        ,   collect = collectVector labels valueTVar
+            handle  = MkVector ioref
+        ,   collect = collectVector labels ioref
         }
 
 checkLabelKeys :: Label l => l -> a -> a
@@ -53,9 +54,9 @@ checkLabelKeys keys r = foldl check r $ map fst $ labelPairs keys keys
 -- TODO(will): This currently makes the assumption that all the types and info
 -- for all sample groups returned by a metric's collect method will be the same.
 -- It is not clear that this will always be a valid assumption.
-collectVector :: Label l => l -> STM.TVar (VectorState l m) -> IO [SampleGroup]
-collectVector keys valueTVar = do
-    (_, metricMap) <- STM.atomically $ STM.readTVar valueTVar
+collectVector :: Label l => l -> IORef.IORef (VectorState l m) -> IO [SampleGroup]
+collectVector keys ioref = do
+    (_, metricMap) <- IORef.readIORef ioref
     joinSamples <$> concat <$> mapM collectInner (Map.assocs metricMap)
     where
         collectInner (labels, metric) =
@@ -77,7 +78,7 @@ getVectorWith :: (Metric metric -> IO a)
               -> Metric (Vector label metric)
               -> IO [(label, a)]
 getVectorWith f (Metric {handle = MkVector valueTVar}) = do
-    (_, metricMap) <- STM.atomically $ STM.readTVar valueTVar
+    (_, metricMap) <- IORef.readIORef valueTVar
     Map.assocs <$> forM metricMap f
 
 -- | Given a label, applies an operation to the corresponding metric in the
@@ -87,30 +88,27 @@ withLabel :: (Label label, MonadMonitor m)
           -> (Metric metric -> IO ())
           -> Metric (Vector label metric)
           -> m ()
-withLabel label f (Metric {handle = MkVector valueTVar}) = doIO $ do
-    (desc, _) <- STM.atomically $ STM.readTVar valueTVar
-    newMetric <- desc
-    metric <- STM.atomically $ do
-        (_, metricMap) <- STM.readTVar valueTVar
+withLabel label f (Metric {handle = MkVector ioref}) = doIO $ do
+    (gen, _) <- IORef.readIORef ioref
+    newMetric <- gen
+    metric <- Atomics.atomicModifyIORefCAS ioref $ \(gen, metricMap) ->
         let maybeMetric = Map.lookup label metricMap
-        case maybeMetric of
-            Just metric -> return metric
-            Nothing     -> do
-                let newValue = (desc, Map.insert label newMetric metricMap)
-                STM.writeTVar valueTVar newValue
-                return newMetric
+            updatedMap  = Map.insert label newMetric metricMap
+        in  case maybeMetric of
+                Nothing     -> ((gen, updatedMap), newMetric)
+                Just metric -> ((gen, metricMap), metric)
     f metric
 
 -- | Removes a label from a vector.
 removeLabel :: (Label label, MonadMonitor m)
             => Metric (Vector label metric) -> label -> m ()
 removeLabel (Metric {handle = MkVector valueTVar}) label =
-    doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
+    doIO $ Atomics.atomicModifyIORefCAS_ valueTVar f
     where f (desc, metricMap) = (desc, Map.delete label metricMap)
 
 -- | Removes all labels from a vector.
 clearLabels :: (Label label, MonadMonitor m)
             => Metric (Vector label metric) -> m ()
 clearLabels (Metric {handle = MkVector valueTVar}) =
-    doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
+    doIO $ Atomics.atomicModifyIORefCAS_ valueTVar f
     where f (desc, _) = (desc, Map.empty)
