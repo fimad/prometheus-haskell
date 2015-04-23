@@ -12,10 +12,6 @@ import Control.Monad.Trans.Class (MonadTrans)
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 
 
--- $setup
--- >>> :module +Prometheus
--- >>> unregisterAll
-
 -- | MonadMonitor describes a class of Monads that are capable of performing
 -- asynchronous IO operations.
 class Monad m => MonadMonitor m where

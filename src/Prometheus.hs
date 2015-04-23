@@ -1,4 +1,5 @@
--- |
+-- | This module provides the basics for instrumenting Haskell executables for
+-- use with the <http://prometheus.io/ Prometheus> monitoring system.
 module Prometheus (
 
 -- * Registry
