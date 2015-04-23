@@ -11,29 +11,30 @@ module Prometheus.Metric.Gauge (
 
 import Prometheus.Info
 import Prometheus.Metric
-import Prometheus.Metric.TVar
 import Prometheus.MonadMonitor
 
-import qualified Control.Concurrent.STM as STM
+import qualified Data.Atomics as Atomics
+import qualified Data.ByteString.UTF8 as BS
+import qualified Data.IORef as IORef
 
 
-newtype Gauge = MkGauge (STM.TVar Double)
+newtype Gauge = MkGauge (IORef.IORef Double)
 
 -- | Create a new gauge metric with a given name and help string.
 gauge :: Info -> IO (Metric Gauge)
 gauge info = do
-    valueTVar <- STM.newTVarIO 0
+    ioref <- IORef.newIORef 0
     return Metric {
-            handle = MkGauge valueTVar
-        ,   collect = collectTVar info GaugeType valueTVar
+            handle = MkGauge ioref
+        ,   collect = collectGauge info ioref
         }
 
 withGauge :: MonadMonitor m
           => Metric Gauge
           -> (Double -> Double)
           -> m ()
-withGauge (Metric {handle = MkGauge valueTVar}) f =
-    doIO $ STM.atomically $ STM.modifyTVar' valueTVar f
+withGauge (Metric {handle = MkGauge ioref}) f =
+    doIO $ Atomics.atomicModifyIORefCAS_ ioref f
 
 -- | Adds a value to a gauge metric.
 addGauge :: MonadMonitor m => Double -> Metric Gauge -> m ()
@@ -60,5 +61,10 @@ setGauge r gauge = withGauge gauge set
 
 -- | Retrieves the current value of a gauge metric.
 getGauge :: Metric Gauge -> IO Double
-getGauge (Metric {handle = MkGauge valueTVar}) =
-    STM.atomically $ STM.readTVar valueTVar
+getGauge (Metric {handle = MkGauge ioref}) = IORef.readIORef ioref
+
+collectGauge :: Info -> IORef.IORef Double -> IO [SampleGroup]
+collectGauge info c = do
+    value <- IORef.readIORef c
+    let sample = Sample (metricName info) [] (BS.fromString $ show value)
+    return [SampleGroup info GaugeType [sample]]
