@@ -1,9 +1,9 @@
 -- | This module defines a metrics that exposes statistics from the GHC runtime
--- system. Programs that use these metrics should run with the `+RTS -T` command
--- line flags.
+-- system ("GHC.Conc", "GHC.Stats").
 --
--- To use this metric add the following somewhere near the start of your main
--- method:
+-- To use these metrics, the monitored executable should run with the `+RTS -T`
+-- command line flags and the following must be added somewhere near the
+-- beginning of the main method:
 --
 -- >>> register ghcMetric
 module Prometheus.Metric.GHC (
