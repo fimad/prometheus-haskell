@@ -15,7 +15,8 @@ The prometheus-haskell repository contains several libraries.
     expose information from GHC's runtime system.
 
   - wai-middleware-prometheus - This library provides WAI middleware that allows
-    for easy integration of prometheus into
+    for easy integration of the prometheus client library into existing WAI
+    apps.
 
 ## Development Environment Setup
 
@@ -27,11 +28,15 @@ sandbox environment.
     cabal sandbox init
     cabal sandbox add-source prometheus-client
     cabal sandbox add-source prometheus-metrics-ghc
+    cabal sandbox add-source wai-middleware-prometheus
 
     cd prometheus-client
     cabal sandbox init --sandbox ../.cabal-sandbox
 
     cd ../prometheus-metrics-ghc
+    cabal sandbox init --sandbox ../.cabal-sandbox
+
+    cd ../wai-middleware-prometheus
     cabal sandbox init --sandbox ../.cabal-sandbox
 
 ### Install dependencies

@@ -5,10 +5,10 @@
 -- command line flags and the following must be added somewhere near the
 -- beginning of the main method:
 --
--- >>> register ghcMetric
+-- >>> register ghcMetrics
 module Prometheus.Metric.GHC (
     GHCMetrics
-,   ghcMetric
+,   ghcMetrics
 ) where
 
 import Control.Applicative ((<$>))
@@ -20,8 +20,8 @@ import qualified Data.ByteString.UTF8 as BS
 
 newtype GHCMetrics = GHCMetrics ()
 
-ghcMetric :: Metric GHCMetrics
-ghcMetric = Metric {
+ghcMetrics :: Metric GHCMetrics
+ghcMetrics = Metric {
         handle  = GHCMetrics ()
     ,   collect = concat <$> sequence ghcCollectors
     }
@@ -110,7 +110,11 @@ ghcCollectors = [
 
 statsCollector :: Show a
                => String -> String -> (GCStats -> a) -> IO [SampleGroup]
-statsCollector name help stat = showCollector name help (stat <$> getGCStats)
+statsCollector name help stat = do
+    statsEnabled <- getGCStatsEnabled
+    if statsEnabled
+        then showCollector name help (stat <$> getGCStats)
+        else return []
 
 showCollector :: Show a => String -> String -> IO a -> IO [SampleGroup]
 showCollector name help ioInt = do
