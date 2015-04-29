@@ -38,25 +38,25 @@ withGauge (Metric {handle = MkGauge ioref}) f =
 
 -- | Adds a value to a gauge metric.
 addGauge :: MonadMonitor m => Double -> Metric Gauge -> m ()
-addGauge x gauge = withGauge gauge add
+addGauge x g = withGauge g add
     where add i = i `seq` x `seq` i + x
 
 -- | Subtracts a value from a gauge metric.
 subGauge :: MonadMonitor m => Double -> Metric Gauge -> m ()
-subGauge x gauge = withGauge gauge sub
+subGauge x g = withGauge g sub
     where sub i = i `seq` x `seq` i - x
 
 -- | Increments a gauge metric by 1.
 incGauge :: MonadMonitor m => Metric Gauge -> m ()
-incGauge gauge = withGauge gauge (+ 1)
+incGauge g = withGauge g (+ 1)
 
 -- | Decrements a gauge metric by 1.
 decGauge :: MonadMonitor m => Metric Gauge -> m ()
-decGauge gauge = withGauge gauge (+ (-1))
+decGauge g = withGauge g (+ (-1))
 
 -- | Sets a gauge metric to a specific value.
 setGauge :: MonadMonitor m => Double -> Metric Gauge -> m ()
-setGauge r gauge = withGauge gauge set
+setGauge r g = withGauge g set
     where set _ = r
 
 -- | Retrieves the current value of a gauge metric.

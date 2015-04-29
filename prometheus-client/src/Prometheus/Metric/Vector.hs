@@ -91,7 +91,7 @@ withLabel :: (Label label, MonadMonitor m)
 withLabel label f (Metric {handle = MkVector ioref}) = doIO $ do
     (gen, _) <- IORef.readIORef ioref
     newMetric <- gen
-    metric <- Atomics.atomicModifyIORefCAS ioref $ \(gen, metricMap) ->
+    metric <- Atomics.atomicModifyIORefCAS ioref $ \(_, metricMap) ->
         let maybeMetric = Map.lookup label metricMap
             updatedMap  = Map.insert label newMetric metricMap
         in  case maybeMetric of

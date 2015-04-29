@@ -46,7 +46,7 @@ library
     , stm                >=2.3
     , transformers
     , utf8-string
-  ghc-options: -W
+  ghc-options: -Wall
 
 test-suite doctest
   type:                 exitcode-stdio-1.0
@@ -71,7 +71,7 @@ test-suite spec
     , bytestring
     , random-shuffle
     , utf8-string
-  ghc-options: -W
+  ghc-options: -Wall
 
 benchmark bench
   type:             exitcode-stdio-1.0
@@ -86,4 +86,4 @@ benchmark bench
     , prometheus-client
     , random
     , utf8-string
-  ghc-options: -W
+  ghc-options: -Wall

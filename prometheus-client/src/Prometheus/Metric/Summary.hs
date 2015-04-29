@@ -46,7 +46,7 @@ withSummary (Metric {handle = MkSummary valueTVar}) f =
 
 -- | Adds a new observation to a summary metric.
 observe :: MonadMonitor m => Double -> Metric Summary -> m ()
-observe v summary = withSummary summary (insert v)
+observe v s = withSummary s (insert v)
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
 getSummary :: Metric Summary -> IO [(Double, Double)]
@@ -122,7 +122,7 @@ insert value estimator@(Estimator oldCount oldSum quantiles items) =
         calcD r = fromIntegral
                 $ floor (invariant estimator {
                     estCount = 1 + estCount estimator
-                } r) - 1
+                } r) - (1 :: Int64)
 
 
 compress :: Estimator -> Estimator
@@ -140,9 +140,9 @@ compress est@(Estimator _ _ _ items) = est {
                 inv = invariant est r1
 
 query :: Estimator -> Double -> Double
-query est@(Estimator count _ _ items) q = findQuantile rs items
+query est@(Estimator count _ _ items) q = findQuantile allRs items
     where
-        rs = 0 : zipWith (+) rs (map itemG items)
+        allRs = 0 : zipWith (+) allRs (map itemG items)
 
         n = fromIntegral count
         f = invariant est

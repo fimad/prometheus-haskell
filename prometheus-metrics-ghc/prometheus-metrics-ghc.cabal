@@ -27,7 +27,7 @@ library
       base               >=4.6 && <4.8
     , prometheus-client
     , utf8-string
-  ghc-options: -W
+  ghc-options: -Wall
 
 test-suite doctest
   type:                 exitcode-stdio-1.0
