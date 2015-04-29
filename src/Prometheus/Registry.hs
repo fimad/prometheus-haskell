@@ -26,29 +26,25 @@ type Registry = [RegisteredMetric]
 globalRegistry :: STM.TVar Registry
 globalRegistry = unsafePerformIO $ STM.newTVarIO []
 
--- | Registers a metric with the global metric registry or retrieves the
--- currently registered metric with the same description.
+-- | Registers a metric with the global metric registry.
 register :: Metric s -> IO (Metric s)
 register metric = do
     let addToRegistry = (MkRegisteredMetric metric :)
     STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
     return metric
 
--- | Registers a metric with the global metric registry or retrieves the
--- currently registered metric with the same description.
+-- | Registers a metric with the global metric registry.
 registerIO :: IO (Metric s) -> IO (Metric s)
 registerIO metricGen = metricGen >>= register
 
--- | Registers a metric with the global metric registry or retrieves the
--- currently registered metric with the same description.
+-- | Registers a metric with the global metric registry.
 --
 -- __IMPORTANT__: This method should only be used to register metrics as top
 -- level symbols, it should not be run from other pure code.
 unsafeRegister :: Metric s -> Metric s
 unsafeRegister = unsafePerformIO . register
 
--- | Registers a metric with the global metric registry or retrieves the
--- currently registered metric with the same description.
+-- | Registers a metric with the global metric registry.
 --
 -- __IMPORTANT__: This method should only be used to register metrics as top
 -- level symbols, it should not be run from other pure code.
