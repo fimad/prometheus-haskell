@@ -45,6 +45,7 @@ library
     , mtl
     , stm                >=2.3
     , transformers
+    , time
     , utf8-string
   ghc-options: -Wall
 

@@ -4,6 +4,7 @@ module Prometheus.Metric.Summary (
 ,   summary
 ,   defaultQuantiles
 ,   observe
+,   observeDuration
 ,   getSummary
 
 ,   dumpEstimator
@@ -20,6 +21,7 @@ import Prometheus.Metric
 import Prometheus.MonadMonitor
 
 import Data.Int (Int64)
+import Data.Time.Clock (diffUTCTime, getCurrentTime)
 import qualified Control.Concurrent.STM as STM
 import qualified Data.ByteString.UTF8 as BS
 
@@ -47,6 +49,16 @@ withSummary (Metric {handle = MkSummary valueTVar}) f =
 -- | Adds a new observation to a summary metric.
 observe :: MonadMonitor m => Double -> Metric Summary -> m ()
 observe v s = withSummary s (insert v)
+
+-- | Adds the duration in seconds of an IO action as an observation to a summary
+-- metric.
+observeDuration :: IO a -> Metric Summary -> IO a
+observeDuration io metric = do
+    start  <- getCurrentTime
+    result <- io
+    end    <- getCurrentTime
+    observe (fromRational $ toRational $ end `diffUTCTime` start) metric
+    return result
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
 getSummary :: Metric Summary -> IO [(Double, Double)]

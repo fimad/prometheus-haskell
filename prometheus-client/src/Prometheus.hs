@@ -60,6 +60,7 @@ module Prometheus (
 ,   addGauge
 ,   subGauge
 ,   setGauge
+,   setGaugeToDuration
 ,   getGauge
 
 -- ** Summary
@@ -78,6 +79,7 @@ module Prometheus (
 ,   summary
 ,   defaultQuantiles
 ,   observe
+,   observeDuration
 ,   getSummary
 
 -- ** Vector

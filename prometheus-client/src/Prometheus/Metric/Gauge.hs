@@ -6,6 +6,7 @@ module Prometheus.Metric.Gauge (
 ,   addGauge
 ,   subGauge
 ,   setGauge
+,   setGaugeToDuration
 ,   getGauge
 ) where
 
@@ -13,6 +14,7 @@ import Prometheus.Info
 import Prometheus.Metric
 import Prometheus.MonadMonitor
 
+import Data.Time.Clock (diffUTCTime, getCurrentTime)
 import qualified Data.Atomics as Atomics
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.IORef as IORef
@@ -62,6 +64,15 @@ setGauge r g = withGauge g set
 -- | Retrieves the current value of a gauge metric.
 getGauge :: Metric Gauge -> IO Double
 getGauge (Metric {handle = MkGauge ioref}) = IORef.readIORef ioref
+
+-- | Sets a gauge metric to the duration in seconds of an IO action.
+setGaugeToDuration :: IO a -> Metric Gauge -> IO a
+setGaugeToDuration io metric = do
+    start  <- getCurrentTime
+    result <- io
+    end    <- getCurrentTime
+    setGauge (fromRational $ toRational $ end `diffUTCTime` start) metric
+    return result
 
 collectGauge :: Info -> IORef.IORef Double -> IO [SampleGroup]
 collectGauge info c = do
