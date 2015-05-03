@@ -4,10 +4,6 @@ import Test.DocTest
 
 main :: IO ()
 main = doctest [
-        "-XExistentialQuantification"
-    ,   "-XFlexibleInstances"
-    ,   "-XGeneralizedNewtypeDeriving"
-    ,   "-XTypeSynonymInstances"
-    ,   "-isrc"
+        "-isrc"
     ,   "Prometheus"
     ]

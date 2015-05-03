@@ -7,12 +7,13 @@ module Prometheus.Metric.Summary (
 ,   getSummary
 
 ,   dumpEstimator
-
+,   emptyEstimator
 ,   Estimator (..)
 ,   Item (..)
 ,   insert
 ,   compress
 ,   query
+,   invariant
 ) where
 
 import Prometheus.Info
@@ -110,19 +111,26 @@ insert value estimator@(Estimator oldCount oldSum quantiles items) =
     where
         newEstimator = Estimator (oldCount + 1) (oldSum + value) quantiles
 
-        insertItem _ []            = [Item value 1 0]
+        insertItem _ [] = [Item value 1 0]
         insertItem r [x]
-            | r == 0               = Item value 1 0 : [x]
-            | otherwise            = x : [Item value 1 0]
+            -- The first two cases cover the scenario where the initial size of
+            -- the list is one.
+            | r == 0  && value < itemValue x  = Item value 1 0 : [x]
+            | r == 0                          = x : [Item value 1 0]
+            -- The last case covers the scenario where the we have walked off
+            -- the end of a list with more than 1 element in the final case of
+            -- insertItem in which case we already know that x < value.
+            | otherwise                       = x : [Item value 1 0]
         insertItem r (x:y:xs)
+            -- This first case only covers the scenario where value is less than
+            -- the first item in a multi-item list. For subsequent steps of
+            -- a multi valued list, this case cannot happen as it would have
+            -- fallen through to the case below in the previous step.
             | value <= itemValue x = Item value 1 0 : x : y : xs
             | value <= itemValue y = x : Item value 1 (calcD r) : y : xs
             | otherwise            = x : insertItem (itemG x + r) (y : xs)
 
-        calcD r = fromIntegral
-                $ floor (invariant estimator {
-                    estCount = 1 + estCount estimator
-                } r) - (1 :: Int64)
+        calcD r = fromIntegral $ floor (invariant estimator r) - (1 :: Int64)
 
 
 compress :: Estimator -> Estimator
@@ -160,5 +168,5 @@ invariant :: Estimator -> Double -> Double
 invariant (Estimator count _ quantiles _) r = minimum $ map fj quantiles
     where
         n = fromIntegral count
-        fj (q, e) | q * n <= r && r <= n = 2 * e * r / q
-                  | otherwise            = 2 * e * (n - r) / (1 - q)
+        fj (q, e) | q * n <= r = 2 * e * r / q
+                  | otherwise  = 2 * e * (n - r) / (1 - q)

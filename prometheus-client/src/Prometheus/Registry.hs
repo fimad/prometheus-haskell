@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 module Prometheus.Registry (
     register
 ,   registerIO
