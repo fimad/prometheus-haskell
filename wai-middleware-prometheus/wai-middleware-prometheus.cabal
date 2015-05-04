@@ -26,8 +26,11 @@ library
   build-depends:
       base               >=4.6 && <4.8
     , bytestring
+    , data-default
     , http-types
     , prometheus-client
+    , text
+    , time
     , wai                >=3.0
   ghc-options: -Wall
 
