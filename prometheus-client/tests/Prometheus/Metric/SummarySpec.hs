@@ -11,8 +11,9 @@ import Prometheus.Metric.Summary
 
 import Control.Applicative ((<$>))
 import Control.Monad
+import Data.Int (Int64)
 import Data.List (sort, sortBy)
--- import System.Random.Shuffle
+import System.Random.Shuffle
 import Test.Hspec
 import Test.QuickCheck
 
@@ -23,23 +24,24 @@ spec = describe "Prometheus.Metric.Summary" $ do
         m <- summary (Info "name" "help") quantiles
         mapM_ (`observe` m) [0..(windowSize - 1)]
         checkQuantiles windowSize =<< getQuantiles quantiles m
---    it "computes quantiles correctly for [0,10000) in random" $ do
---        m <- summary (Info "name" "help") quantiles
---        observations <- shuffleM [0..(windowSize - 1)]
---        mapM_ (`observe` m) observations
---        checkQuantiles windowSize =<< getQuantiles quantiles m
+    it "computes quantiles correctly for [0,10000) in random order" $
+        replicateM_ 100 $ do
+            m <- summary (Info "name" "help") quantiles
+            observations <- shuffleM [0..(windowSize - 1)]
+            mapM_ (`observe` m) observations
+            checkQuantiles windowSize =<< getQuantiles quantiles m
     context "Maintains invariants" invariantTests
 
 checkQuantiles :: Double -> [(Double, Double, Double)] -> IO ()
 checkQuantiles windowSize values =
     forM_ values $ \(q, e, actual) -> do
-        let expected = q * (windowSize - 1)
-        let minValue = (q - e) * windowSize
-        let maxValue = (q + e) * windowSize
+        let expected = fromIntegral $ (floor $ q * windowSize :: Int)
+        let minValue = expected - (e * windowSize)
+        let maxValue = expected + (e * windowSize)
         unless (minValue <= actual && actual <= maxValue) $
             expectationFailure $ concat [
                     "Expected value for quantile ", show q
-                ,   " was not within acceptable error range. "
+                ,   " was not within acceptable error range (", show e , "). "
                 ,   "Got ", show actual, ", but wanted ", show expected
                 ,   " (", show minValue, " <= v <= ", show maxValue, ")."
                 ]
@@ -62,8 +64,12 @@ invariantTests :: Spec
 invariantTests = do
     it "Maintains g + d is bounded above by the invariant f" $
         property prop_invariant
+    it "Compression maintains g + d is bounded above by the invariant f" $
+        property prop_invariantAfterCompress
     it "Maintains that rank is bounded by r + g and r + g + d" $
         property prop_boundedRank
+    it "Compression maintains that rank is bounded by r + g and r + g + d" $
+        property prop_boundedRankAfterCompress
 
 prop_invariant :: NonEmptyList Double -> Property
 prop_invariant (NonEmpty events) =
@@ -71,8 +77,17 @@ prop_invariant (NonEmpty events) =
         rvgds  = rvgdsFromEstimator estimator
     in  whenFail (putStrLn $ "[(R, V, G, D)] -> " ++ show rvgds) $
         flip all rvgds $ \(r, _, g, d) ->
-        let f = invariant estimator r
-        in  g + d <= f
+        let f = invariant estimator (fromIntegral r)
+        in  fromIntegral (g + d) <= f
+
+prop_invariantAfterCompress :: NonEmptyList Double -> Property
+prop_invariantAfterCompress (NonEmpty events) =
+    let estimator = estimatorAfterObserving events
+        rvgds  = rvgdsFromEstimator $ compress estimator
+    in  whenFail (putStrLn $ "[(R, V, G, D)] -> " ++ show rvgds) $
+        flip all rvgds $ \(r, _, g, d) ->
+        let f = invariant estimator (fromIntegral r)
+        in  fromIntegral (g + d) <= f
 
 prop_boundedRank :: NonEmptyList Double -> Property
 prop_boundedRank (NonEmpty events) =
@@ -85,7 +100,18 @@ prop_boundedRank (NonEmpty events) =
             maxRank = fromIntegral maxRankInt
         in  r + g <= maxRank && minRank <= r + g + d
 
-rvgdsFromEstimator :: Estimator -> [(Double, Double, Double, Double)]
+prop_boundedRankAfterCompress :: NonEmptyList Double -> Property
+prop_boundedRankAfterCompress (NonEmpty events) =
+    let rvgds = rvgdsFromEstimator $ estimatorAfterObserving events
+        vs    = map (\(_, v, _, _) -> v) rvgds
+    in  whenFail (putStrLn $ "[(R, V, G, D)] -> " ++ show rvgds) $
+        flip all rvgds $ \(r, v, g, d) ->
+        let (minRankInt, maxRankInt) = rankOf v vs
+            minRank = fromIntegral minRankInt
+            maxRank = fromIntegral maxRankInt
+        in  r + g <= maxRank && minRank <= r + g + d
+
+rvgdsFromEstimator :: Estimator -> [(Int64, Double, Int64, Int64)]
 rvgdsFromEstimator estimator = rvgds
     where
         items     = estItems estimator
