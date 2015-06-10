@@ -43,7 +43,7 @@ spec = describe "Prometheus.Metric.Summary" $ do
             checkQuantiles m smallWindowSize =<< getQuantiles quantiles m
     context "Maintains invariants" invariantTests
     where
-      checkBadObservations observations = do
+      checkBadObservations observations =
         it ("computes quantiles correctly for " ++ show observations) $ do
             let windowSize = fromIntegral $ length observations
             m <- summary (Info "name" "help") quantiles

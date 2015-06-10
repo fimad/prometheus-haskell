@@ -184,7 +184,7 @@ query est@(Estimator count _ _ items) q = findQuantile allRs items
 
         findQuantile _        []   = 0 / 0  -- NaN
         findQuantile _        [a]  = itemValue a
-        findQuantile (_:bR:rs) (a@(Item _ _ _):b@(Item _ bG bD):xs)
+        findQuantile (_:bR:rs) (a@(Item{}):b@(Item _ bG bD):xs)
             | fromIntegral (bR + bG + bD) > bound = itemValue a
             | otherwise            = findQuantile (bR:rs) (b:xs)
         findQuantile _        _    = error "Query impossibility"
