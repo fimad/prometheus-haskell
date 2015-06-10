@@ -11,7 +11,7 @@ API documentation can be found on each libraries respective hackage page:
 
 The purposes of the libraries are outline below, and an example application can
 be found under the
-[examples](https://github.com/fimad/prometheus-haskell/tree/master/examples)
+[example](https://github.com/fimad/prometheus-haskell/tree/master/example)
 folder in the root directory of the git repository.
 
 ## prometheus-client

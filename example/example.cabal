@@ -1,0 +1,31 @@
+name:                prometheus-haskell-example
+version:             0.1.0.0
+synopsis:            Example app for prometheus-haskell.
+description:         Example app for prometheus-haskell.
+homepage:            https://github.com/fimad/prometheus-haskell
+license:             Apache-2.0
+license-file:        LICENSE
+author:              Will Coster
+maintainer:          willcoster@gmail.com
+copyright:           2015 Will Coster
+category:            Network
+build-type:          Simple
+cabal-version:       >=1.10
+
+source-repository head
+  type:     git
+  location: https://github.com/fimad/prometheus-haskell
+
+executable prometheus-haskell-example
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:
+      base                      >=4.6 && <4.8
+    , bytestring
+    , http-types
+    , prometheus-client
+    , prometheus-metrics-ghc
+    , wai                       >=3
+    , wai-middleware-prometheus
+    , warp
+  ghc-options: -Wall
