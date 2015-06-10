@@ -132,7 +132,8 @@ insert value estimator@(Estimator oldCount oldSum quantiles items) =
             -- a multi valued list, this case cannot happen as it would have
             -- fallen through to the case below in the previous step.
             | value <= itemValue x = Item value 1 0 : x : y : xs
-            | value <= itemValue y = x : Item value 1 (calcD r) : y : xs
+            | value <= itemValue y = x : Item value 1 (calcD $ r + itemG x)
+                                       : y : xs
             | otherwise            = x : insertItem (itemG x + r) (y : xs)
 
         calcD r = max 0
