@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Prometheus.Label (
     Label (..)
 ,   LabelPairs

@@ -16,9 +16,8 @@ main = defaultMain [
     ]
 
 expandBenches :: (Int -> IO a) -> [Benchmark]
-expandBenches b = expand b [1, 10, 100, 1000, 10000]
-    where
-        expand b = map (\i -> bench (show i) (whnfIO (b i)))
+expandBenches = flip expand [1, 10, 100, 1000, 10000]
+    where expand b = map (\i -> bench (show i) (whnfIO (b i)))
 
 incCounterThenCollect :: Int -> IO [SampleGroup]
 incCounterThenCollect i = do

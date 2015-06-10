@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Prometheus.MonadMonitor (
     MonadMonitor (..)
 ,   Monitor

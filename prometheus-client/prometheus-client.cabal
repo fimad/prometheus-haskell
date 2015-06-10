@@ -19,11 +19,6 @@ source-repository head
 library
   hs-source-dirs:      src/
   default-language:    Haskell2010
-  default-extensions:
-      ExistentialQuantification
-    , FlexibleInstances
-    , GeneralizedNewtypeDeriving
-    , TypeSynonymInstances
   exposed-modules:
       Prometheus
   other-modules:
@@ -63,14 +58,20 @@ test-suite doctest
 test-suite spec
   type:              exitcode-stdio-1.0
   default-language:  Haskell2010
-  hs-source-dirs:    tests
+  hs-source-dirs:    src, tests
   main-is:           Spec.hs
   build-depends:
-      base               >=4.6 && <4.8
-    , hspec
-    , prometheus-client
+      QuickCheck
+    , atomic-primops
+    , base               >=4.6 && <4.8
     , bytestring
+    , containers
+    , hspec
+    , mtl
     , random-shuffle
+    , stm
+    , time
+    , transformers
     , utf8-string
   ghc-options: -Wall
 
@@ -83,7 +84,6 @@ benchmark bench
       base               >=4.6 && <4.8
     , bytestring
     , criterion
-    , hspec
     , prometheus-client
     , random
     , utf8-string

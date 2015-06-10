@@ -72,7 +72,7 @@ module Prometheus (
 -- >>> mySummary <- summary (Info "my_summary" "") defaultQuantiles
 -- >>> observe 0 mySummary
 -- >>> getSummary mySummary
--- [(0.5,0.0),(0.9,0.0),(0.99,0.0)]
+-- [(1 % 2,0.0),(9 % 10,0.0),(99 % 100,0.0)]
 
 ,   Summary
 ,   Quantile

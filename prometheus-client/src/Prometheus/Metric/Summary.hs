@@ -8,12 +8,13 @@ module Prometheus.Metric.Summary (
 ,   getSummary
 
 ,   dumpEstimator
-
+,   emptyEstimator
 ,   Estimator (..)
 ,   Item (..)
 ,   insert
 ,   compress
 ,   query
+,   invariant
 ) where
 
 import Prometheus.Info
@@ -22,6 +23,7 @@ import Prometheus.MonadMonitor
 
 import Data.Int (Int64)
 import Data.Time.Clock (diffUTCTime, getCurrentTime)
+import Data.Foldable (foldr')
 import qualified Control.Concurrent.STM as STM
 import qualified Data.ByteString.UTF8 as BS
 
@@ -61,7 +63,7 @@ observeDuration io metric = do
     return result
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
-getSummary :: Metric Summary -> IO [(Double, Double)]
+getSummary :: Metric Summary -> IO [(Rational, Double)]
 getSummary (Metric {handle = MkSummary valueTVar}) = do
     estimator <- STM.atomically $ do
         STM.modifyTVar' valueTVar compress
@@ -83,8 +85,12 @@ collectSummary info valueTVar = STM.atomically $ do
         bsShow :: Show s => s -> BS.ByteString
         bsShow = BS.fromString . show
 
-        toSample estimator q = Sample (metricName info) [("quantile", show q)]
-                             $ bsShow $ query estimator q
+        toSample estimator q =
+            Sample (metricName info) [("quantile", show $ toDouble q)] $
+                bsShow $ query estimator q
+
+        toDouble :: Rational -> Double
+        toDouble = fromRational
 
 dumpEstimator :: Metric Summary -> IO Estimator
 dumpEstimator (Metric {handle = MkSummary valueTVar}) =
@@ -92,12 +98,12 @@ dumpEstimator (Metric {handle = MkSummary valueTVar}) =
 
 -- | A quantile is a pair of a quantile value and an associated acceptable error
 -- value.
-type Quantile = (Double, Double)
+type Quantile = (Rational, Rational)
 
 data Item = Item {
     itemValue :: Double
-,   itemG     :: Double
-,   itemD     :: Double
+,   itemG     :: !Int64
+,   itemD     :: !Int64
 } deriving (Eq, Show)
 
 instance Ord Item where
@@ -122,55 +128,71 @@ insert value estimator@(Estimator oldCount oldSum quantiles items) =
     where
         newEstimator = Estimator (oldCount + 1) (oldSum + value) quantiles
 
-        insertItem _ []            = [Item value 1 0]
+        insertItem _ [] = [Item value 1 0]
         insertItem r [x]
-            | r == 0               = Item value 1 0 : [x]
-            | otherwise            = x : [Item value 1 0]
+            -- The first two cases cover the scenario where the initial size of
+            -- the list is one.
+            | r == 0 && value < itemValue x = Item value 1 0 : [x]
+            | r == 0                        = x : [Item value 1 0]
+            -- The last case covers the scenario where the we have walked off
+            -- the end of a list with more than 1 element in the final case of
+            -- insertItem in which case we already know that x < value.
+            | otherwise                     = x : [Item value 1 0]
         insertItem r (x:y:xs)
+            -- This first case only covers the scenario where value is less than
+            -- the first item in a multi-item list. For subsequent steps of
+            -- a multi valued list, this case cannot happen as it would have
+            -- fallen through to the case below in the previous step.
             | value <= itemValue x = Item value 1 0 : x : y : xs
-            | value <= itemValue y = x : Item value 1 (calcD r) : y : xs
+            | value <= itemValue y = x : Item value 1 (calcD $ r + itemG x)
+                                       : y : xs
             | otherwise            = x : insertItem (itemG x + r) (y : xs)
 
-        calcD r = fromIntegral
-                $ floor (invariant estimator {
-                    estCount = 1 + estCount estimator
-                } r) - (1 :: Int64)
+        calcD r = max 0
+                $ floor (invariant estimator (fromIntegral r)) - 1
 
 
 compress :: Estimator -> Estimator
+compress est@(Estimator _ _ _ [])    = est
 compress est@(Estimator _ _ _ items) = est {
-        estItems = compressItems [] items
+        estItems = (minItem :)
+                 $ foldr' compressPair []
+                 $ drop 1  -- The exact minimum item must be kept exactly.
+                 $ zip items
+                 $ scanl (+) 0 (map itemG items)
     }
     where
-        compressItems prev []  = reverse prev
-        compressItems prev [a] = reverse $ a : prev
-        compressItems prev (i1@(Item _ g1 _) : i2@(Item v2 g2 d2) : xs)
-            | g1 + g2 + d2 < inv = compressItems prev (Item v2 (g1 + g2) d2:xs)
-            | otherwise          = compressItems (i1:prev) (i2:xs)
+        minItem = head items
+        compressPair (a, _) [] = [a]
+        compressPair (a@(Item _ aG _), r) (b@(Item bVal bG bD):bs)
+            | bD == 0             = a : b : bs
+            | aG + bG + bD <= inv = Item bVal (aG + bG) bD : bs
+            | otherwise           = a : b : bs
             where
-                r1 = sum $ map itemG prev
-                inv = invariant est r1
+                inv = floor $ invariant est (fromIntegral r)
 
-query :: Estimator -> Double -> Double
+query :: Estimator -> Rational -> Double
 query est@(Estimator count _ _ items) q = findQuantile allRs items
     where
-        allRs = 0 : zipWith (+) allRs (map itemG items)
+        allRs = scanl (+) 0 $ map itemG items
 
         n = fromIntegral count
         f = invariant est
 
-        bound = q * n + f (q * n) / 2
+        rank  = q * n
+        bound = rank + (f rank / 2)
 
-        findQuantile _        []  = 0 / 0  -- NaN
-        findQuantile _        [a] = itemValue a
-        findQuantile (_:r:rs) (a:b@(Item _ g d):xs)
-            | r + g + d > bound   = itemValue a
-            | otherwise           = findQuantile (r:rs) (b:xs)
-        findQuantile _        _   = error "Query impossibility"
+        findQuantile _        []   = 0 / 0  -- NaN
+        findQuantile _        [a]  = itemValue a
+        findQuantile (_:bR:rs) (a@(Item _ _ _):b@(Item _ bG bD):xs)
+            | fromIntegral (bR + bG + bD) > bound = itemValue a
+            | otherwise            = findQuantile (bR:rs) (b:xs)
+        findQuantile _        _    = error "Query impossibility"
 
-invariant :: Estimator -> Double -> Double
-invariant (Estimator count _ quantiles _) r = minimum $ map fj quantiles
+invariant :: Estimator -> Rational -> Rational
+invariant (Estimator count _ quantiles _) r = max 1
+                                            $ minimum $ map fj quantiles
     where
         n = fromIntegral count
-        fj (q, e) | q * n <= r && r <= n = 2 * e * r / q
-                  | otherwise            = 2 * e * (n - r) / (1 - q)
+        fj (q, e) | q * n <= r = 2 * e * r / q
+                  | otherwise  = 2 * e * (n - r) / (1 - q)
