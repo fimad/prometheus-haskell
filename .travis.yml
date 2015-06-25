@@ -2,6 +2,8 @@ language: haskell
 notifications:
   email: false
 
+install: []
+
 before_script:
   - cabal sandbox init
   - cabal sandbox add-source prometheus-client
