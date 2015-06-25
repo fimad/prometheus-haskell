@@ -12,19 +12,23 @@ before_script:
 
   - cd prometheus-client
   - cabal sandbox init --sandbox ../.cabal-sandbox
-  - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+  - cabal install --only-dependencies --enable-benchmarks --enable-tests
+  - cabal configure --enable-tests
 
   - cd ../prometheus-metrics-ghc
   - cabal sandbox init --sandbox ../.cabal-sandbox
-  - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+  - cabal install --only-dependencies --enable-benchmarks --enable-tests
+  - cabal configure --enable-tests
 
   - cd ../wai-middleware-prometheus
   - cabal sandbox init --sandbox ../.cabal-sandbox
-  - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+  - cabal install --only-dependencies --enable-benchmarks --enable-tests
+  - cabal configure --enable-tests
 
   - cd ../examples
   - cabal sandbox init --sandbox ../.cabal-sandbox
-  - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+  - cabal install --only-dependencies --enable-benchmarks --enable-tests
+  - cabal configure --enable-tests
 
   - cd ..
 
