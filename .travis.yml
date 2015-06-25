@@ -7,18 +7,23 @@ before_script:
   - cabal sandbox add-source prometheus-client
   - cabal sandbox add-source prometheus-metrics-ghc
   - cabal sandbox add-source wai-middleware-prometheus
+
   - cd prometheus-client
   - cabal sandbox init --sandbox ../.cabal-sandbox
   - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+
   - cd ../prometheus-metrics-ghc
   - cabal sandbox init --sandbox ../.cabal-sandbox
   - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+
   - cd ../wai-middleware-prometheus
   - cabal sandbox init --sandbox ../.cabal-sandbox
   - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+
   - cd ../examples
   - cabal sandbox init --sandbox ../.cabal-sandbox
   - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+
   - cd ..
 
 script:
