@@ -1,0 +1,33 @@
+language: haskell
+notifications:
+  email: false
+
+before_script:
+  - cabal sandbox init
+  - cabal sandbox add-source prometheus-client
+  - cabal sandbox add-source prometheus-metrics-ghc
+  - cabal sandbox add-source wai-middleware-prometheus
+
+  - cd prometheus-client
+  - cabal sandbox init --sandbox ../.cabal-sandbox
+  - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+
+  - cd ../prometheus-metrics-ghc
+  - cabal sandbox init --sandbox ../.cabal-sandbox
+  - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+
+  - cd ../wai-middleware-prometheus
+  - cabal sandbox init --sandbox ../.cabal-sandbox
+  - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+
+  - cd ../examples
+  - cabal sandbox init --sandbox ../.cabal-sandbox
+  - cabal configure --enable-benchmarks --enable-tests --enable-library-coverage
+
+  - cd ..
+
+script:
+  - cd prometheus-client && cabal build && cabal test
+  - cd ../prometheus-metrics-ghc && cabal build && cabal test
+  - cd ../wai-middleware-prometheus && cabal build && cabal test
+  - cd ../examples && cabal build
