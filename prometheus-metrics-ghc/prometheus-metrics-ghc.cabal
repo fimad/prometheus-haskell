@@ -26,7 +26,7 @@ library
   build-depends:
       base               >=4.6 && <4.8
     , prometheus-client
-    , utf8-string
+    , utf8-string        >=0.3
   ghc-options: -Wall
 
 test-suite doctest

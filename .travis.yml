@@ -1,0 +1,41 @@
+ghc: 7.8
+language: haskell
+notifications:
+  email: false
+
+install: []
+
+before_script:
+  - wget https://www.stackage.org/lts/cabal.config
+  - cabal sandbox init
+  - cabal sandbox add-source prometheus-client
+  - cabal sandbox add-source prometheus-metrics-ghc
+  - cabal sandbox add-source wai-middleware-prometheus
+
+  - cd prometheus-client
+  - cabal sandbox init --sandbox ../.cabal-sandbox
+  - cabal install --only-dependencies --enable-benchmarks --enable-tests
+  - cabal configure --enable-tests
+
+  - cd ../prometheus-metrics-ghc
+  - cabal sandbox init --sandbox ../.cabal-sandbox
+  - cabal install --only-dependencies --enable-benchmarks --enable-tests
+  - cabal configure --enable-tests
+
+  - cd ../wai-middleware-prometheus
+  - cabal sandbox init --sandbox ../.cabal-sandbox
+  - cabal install --only-dependencies --enable-benchmarks --enable-tests
+  - cabal configure --enable-tests
+
+  - cd ../example
+  - cabal sandbox init --sandbox ../.cabal-sandbox
+  - cabal install --only-dependencies --enable-benchmarks --enable-tests
+  - cabal configure --enable-tests
+
+  - cd ..
+
+script:
+  - cd prometheus-client && cabal build && cabal test
+  - cd ../prometheus-metrics-ghc && cabal build && cabal test
+  - cd ../wai-middleware-prometheus && cabal build && cabal test
+  - cd ../example && cabal build
