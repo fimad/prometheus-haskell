@@ -25,11 +25,11 @@ library
       Network.Wai.Middleware.Prometheus
   build-depends:
       base               >=4.6 && <4.8
-    , bytestring
+    , bytestring         >=0.9
     , data-default
     , http-types
     , prometheus-client
-    , text
+    , text               >=0.11
     , time
     , wai                >=3.0
   ghc-options: -Wall

@@ -35,9 +35,9 @@ library
   build-depends:
       atomic-primops     >=0.4
     , base               >=4.6 && <4.8
-    , bytestring
+    , bytestring         >=0.9
     , containers
-    , mtl
+    , mtl                >=2
     , stm                >=2.3
     , transformers
     , time
@@ -83,7 +83,7 @@ benchmark bench
   build-depends:
       base               >=4.6 && <4.8
     , bytestring
-    , criterion
+    , criterion          >=1.1
     , prometheus-client
     , random
     , utf8-string
