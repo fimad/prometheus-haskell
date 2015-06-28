@@ -1,5 +1,5 @@
 name:                prometheus-haskell-example
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            Example app for prometheus-haskell.
 description:         Example app for prometheus-haskell.
 homepage:            https://github.com/fimad/prometheus-haskell
