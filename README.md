@@ -5,9 +5,9 @@ instrument a Haskell application with metrics that can be consumed by the
 [Prometheus](http://prometheus.io) monitoring system and time series database.
 
 API documentation can be found on each libraries respective hackage page:
-[prometheus-client](hackage.haskell.org/package/prometheus-client),
-[prometheus-metrics-ghc](hackage.haskell.org/package/prometheus-metrics-ghc),
-[wai-middleware-prometheus](hackage.haskell.org/package/wai-middleware-prometheus).
+[prometheus-client](http://hackage.haskell.org/package/prometheus-client),
+[prometheus-metrics-ghc](http://hackage.haskell.org/package/prometheus-metrics-ghc),
+[wai-middleware-prometheus](http://hackage.haskell.org/package/wai-middleware-prometheus).
 
 The purposes of the libraries are outline below, and an example application can
 be found under the
