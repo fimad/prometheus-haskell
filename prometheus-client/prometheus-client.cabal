@@ -34,7 +34,7 @@ library
     , Prometheus.Registry
   build-depends:
       atomic-primops     >=0.4
-    , base               >=4.6 && <4.8
+    , base               >=4.7 && <5
     , bytestring         >=0.9
     , containers
     , mtl                >=2
@@ -51,7 +51,7 @@ test-suite doctest
   ghc-options:          -Wall
   main-is:              doctest.hs
   build-depends:
-      base
+      base               >=4.7 && <5
     , doctest
     , prometheus-client
 
@@ -63,7 +63,7 @@ test-suite spec
   build-depends:
       QuickCheck
     , atomic-primops
-    , base               >=4.6 && <4.8
+    , base               >=4.7 && <5
     , bytestring
     , containers
     , hspec
@@ -81,7 +81,7 @@ benchmark bench
   hs-source-dirs:   benchmarks
   main-is:          Main.hs
   build-depends:
-      base               >=4.6 && <4.8
+      base               >=4.7 && <5
     , bytestring
     , criterion          >=1.1
     , prometheus-client
