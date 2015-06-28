@@ -27,7 +27,7 @@ before_script:
   - cabal install --only-dependencies --enable-benchmarks --enable-tests
   - cabal configure --enable-tests
 
-  - cd ../examples
+  - cd ../example
   - cabal sandbox init --sandbox ../.cabal-sandbox
   - cabal install --only-dependencies --enable-benchmarks --enable-tests
   - cabal configure --enable-tests
@@ -38,4 +38,4 @@ script:
   - cd prometheus-client && cabal build && cabal test
   - cd ../prometheus-metrics-ghc && cabal build && cabal test
   - cd ../wai-middleware-prometheus && cabal build && cabal test
-  - cd ../examples && cabal build
+  - cd ../example && cabal build
