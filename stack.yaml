@@ -1,0 +1,9 @@
+flags: {}
+packages:
+- prometheus-metrics-ghc/
+- wai-middleware-prometheus/
+- example/
+- prometheus-client/
+extra-deps:
+- atomic-primops-0.8
+resolver: lts-2.15
