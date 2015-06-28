@@ -24,7 +24,7 @@ library
   exposed-modules:
       Network.Wai.Middleware.Prometheus
   build-depends:
-      base               >=4.6 && <5
+      base               >=4.7 && <5
     , bytestring         >=0.9
     , data-default
     , http-types
@@ -41,6 +41,6 @@ test-suite doctest
   ghc-options:          -Wall
   main-is:              doctest.hs
   build-depends:
-      base               >=4.6 && <5
+      base               >=4.7 && <5
     , doctest
     , prometheus-client

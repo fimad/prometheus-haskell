@@ -24,7 +24,7 @@ library
   exposed-modules:
       Prometheus.Metric.GHC
   build-depends:
-      base               >=4.6 && <5
+      base               >=4.7 && <5
     , prometheus-client
     , utf8-string        >=0.3
   ghc-options: -Wall
@@ -36,6 +36,6 @@ test-suite doctest
   ghc-options:          -Wall
   main-is:              doctest.hs
   build-depends:
-      base               >=4.6 && <5
+      base               >=4.7 && <5
     , doctest
     , prometheus-client
