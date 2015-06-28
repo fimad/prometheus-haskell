@@ -1,4 +1,6 @@
-ghc: 7.8
+ghc:
+  - '7.8'
+  - '7.10'
 language: haskell
 notifications:
   email: false
