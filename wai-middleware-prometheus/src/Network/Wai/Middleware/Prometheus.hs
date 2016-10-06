@@ -12,6 +12,7 @@ module Network.Wai.Middleware.Prometheus (
 
 import Data.Time.Clock (diffUTCTime, getCurrentTime)
 import qualified Data.ByteString.Builder as BS
+import qualified Data.ByteString.Char8 as BS
 import qualified Data.Default as Default
 import qualified Data.Text as T
 import qualified Network.HTTP.Types as HTTP
@@ -45,8 +46,8 @@ instance Default.Default PrometheusSettings where
 {-# NOINLINE requestLatency #-}
 -- XXX: https://prometheus.io/docs/practices/naming/ says this should be
 -- _seconds, not _microseconds.
-requestLatency :: Prom.Metric (Prom.Vector Prom.Label2 Prom.Summary)
-requestLatency = Prom.unsafeRegisterIO $ Prom.vector ("handler", "status_code")
+requestLatency :: Prom.Metric (Prom.Vector Prom.Label3 Prom.Summary)
+requestLatency = Prom.unsafeRegisterIO $ Prom.vector ("handler", "method", "status_code")
                                        $ Prom.summary info Prom.defaultQuantiles
     where info = Prom.Info "http_request_duration_microseconds"
                            "The HTTP request latencies in microseconds."
@@ -64,8 +65,9 @@ instrumentApp handler app req respond = do
     app req $ \res -> do
         end <- getCurrentTime
         let latency = fromRational $ toRational (end `diffUTCTime` start) * 1000000
+        let method = BS.unpack (Wai.requestMethod req)
         let status = show (HTTP.statusCode (Wai.responseStatus res))
-        Prom.withLabel (handler, status) (Prom.observe latency) requestLatency
+        Prom.withLabel (handler, method, status) (Prom.observe latency) requestLatency
         respond res
 
 -- | Expose Prometheus metrics and instrument an application with some basic
