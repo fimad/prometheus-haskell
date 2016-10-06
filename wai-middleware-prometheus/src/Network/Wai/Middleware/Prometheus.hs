@@ -7,7 +7,6 @@ module Network.Wai.Middleware.Prometheus (
 ,   PrometheusSettings (..)
 ,   Default.def
 ,   instrumentApp
-,   instrumentIO
 ,   metricsApp
 ) where
 
@@ -68,27 +67,6 @@ instrumentApp handler app req respond = do
         let status = show (HTTP.statusCode (Wai.responseStatus res))
         Prom.withLabel (handler, status) (Prom.observe latency) requestLatency
         respond res
-
--- | Instrument an IO action with timing metrics. This function can be used if
--- you would like to get more fine grained metrics, for instance this can be
--- used to instrument individual end points.
---
--- If you use this function you will likely want to override the default value
--- of 'prometheusInstrumentApp' to be false so that your app does not get double
--- instrumented.
-instrumentIO :: String  -- ^ The label used to identify this IO operation
-             -> IO a    -- ^ The IO action to instrument
-             -> IO a    -- ^ The instrumented app
-instrumentIO = observeMicroSeconds
-
-observeMicroSeconds :: String -> IO a -> IO a
-observeMicroSeconds handler io = do
-    start  <- getCurrentTime
-    result <- io
-    end    <- getCurrentTime
-    let latency = fromRational $ toRational (end `diffUTCTime` start) * 1000000
-    Prom.withLabel handler (Prom.observe latency) requestLatency
-    return result
 
 -- | Expose Prometheus metrics and instrument an application with some basic
 -- metrics (e.g. request latency).
