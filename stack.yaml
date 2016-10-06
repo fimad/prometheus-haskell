@@ -4,6 +4,4 @@ packages:
 - wai-middleware-prometheus/
 - example/
 - prometheus-client/
-extra-deps:
-- atomic-primops-0.8
-resolver: lts-2.15
+resolver: lts-7.2
