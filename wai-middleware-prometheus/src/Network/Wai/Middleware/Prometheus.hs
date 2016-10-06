@@ -88,14 +88,8 @@ prometheus :: PrometheusSettings -> Wai.Middleware
 prometheus PrometheusSettings{..} app req respond =
     if     Wai.requestMethod req == HTTP.methodGet
         && Wai.pathInfo req == prometheusEndPoint
-    then measure measureMetrics "prometheus" $ respondWithMetrics respond
-    else measure measureApp "app" $ app req respond
-    where
-        measureMetrics = prometheusInstrumentPrometheus
-        measureApp = prometheusInstrumentApp
-        measure shouldInstrument handler io
-            | shouldInstrument = observeMicroSeconds handler io
-            | otherwise        = io
+    then instrumentApp "prometheus" (const respondWithMetrics) req respond
+    else instrumentApp "app" app req respond
 
 
 -- | WAI Application that serves the Prometheus metrics page regardless of
