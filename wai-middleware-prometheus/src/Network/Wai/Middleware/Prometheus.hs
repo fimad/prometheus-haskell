@@ -44,8 +44,10 @@ instance Default.Default PrometheusSettings where
     }
 
 {-# NOINLINE requestLatency #-}
-requestLatency :: Prom.Metric (Prom.Vector Prom.Label1 Prom.Summary)
-requestLatency = Prom.unsafeRegisterIO $ Prom.vector "handler"
+-- XXX: https://prometheus.io/docs/practices/naming/ says this should be
+-- _seconds, not _microseconds.
+requestLatency :: Prom.Metric (Prom.Vector Prom.Label2 Prom.Summary)
+requestLatency = Prom.unsafeRegisterIO $ Prom.vector ("handler", "status_code")
                                        $ Prom.summary info Prom.defaultQuantiles
     where info = Prom.Info "http_request_duration_microseconds"
                            "The HTTP request latencies in microseconds."
@@ -58,8 +60,14 @@ requestLatency = Prom.unsafeRegisterIO $ Prom.vector "handler"
 instrumentApp :: String           -- ^ The label used to identify this app
               -> Wai.Application  -- ^ The app to instrument
               -> Wai.Application  -- ^ The instrumented app
-instrumentApp handler app req respond =
-    observeMicroSeconds handler (app req respond)
+instrumentApp handler app req respond = do
+    start <- getCurrentTime
+    app req $ \res -> do
+        end <- getCurrentTime
+        let latency = fromRational $ toRational (end `diffUTCTime` start) * 1000000
+        let status = show (HTTP.statusCode (Wai.responseStatus res))
+        Prom.withLabel (handler, status) (Prom.observe latency) requestLatency
+        respond res
 
 -- | Instrument an IO action with timing metrics. This function can be used if
 -- you would like to get more fine grained metrics, for instance this can be
@@ -88,6 +96,8 @@ prometheus :: PrometheusSettings -> Wai.Middleware
 prometheus PrometheusSettings{..} app req respond =
     if     Wai.requestMethod req == HTTP.methodGet
         && Wai.pathInfo req == prometheusEndPoint
+        -- XXX: Should probably be "metrics" rather than "prometheus", since
+        -- "prometheus" can be confused with actual prometheus.
     then instrumentApp "prometheus" (const respondWithMetrics) req respond
     else instrumentApp "app" app req respond
 
