@@ -8,6 +8,7 @@ module Network.Wai.Middleware.Prometheus (
 ,   Default.def
 ,   instrumentApp
 ,   instrumentIO
+,   metricsApp
 ) where
 
 import Data.Time.Clock (diffUTCTime, getCurrentTime)
@@ -95,6 +96,12 @@ prometheus PrometheusSettings{..} app req respond =
         measure shouldInstrument handler io
             | shouldInstrument = observeMicroSeconds handler io
             | otherwise        = io
+
+
+-- | WAI Application that serves the Prometheus metrics page regardless of
+-- what the request is.
+metricsApp :: Wai.Application
+metricsApp = const respondWithMetrics
 
 respondWithMetrics :: (Wai.Response -> IO Wai.ResponseReceived)
                    -> IO Wai.ResponseReceived
