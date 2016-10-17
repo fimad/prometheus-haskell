@@ -7,13 +7,15 @@ module Network.Wai.Middleware.Prometheus (
 ,   PrometheusSettings (..)
 ,   Default.def
 ,   instrumentApp
+,   instrumentIO
 ,   metricsApp
 ) where
 
-import Data.Time.Clock (diffUTCTime, getCurrentTime)
+import Data.Time.Clock (UTCTime, diffUTCTime, getCurrentTime)
 import qualified Data.ByteString.Builder as BS
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Default as Default
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.Wai as Wai
@@ -64,11 +66,34 @@ instrumentApp handler app req respond = do
     start <- getCurrentTime
     app req $ \res -> do
         end <- getCurrentTime
-        let latency = fromRational $ toRational (end `diffUTCTime` start) * 1000000
-        let method = BS.unpack (Wai.requestMethod req)
-        let status = show (HTTP.statusCode (Wai.responseStatus res))
-        Prom.withLabel (handler, method, status) (Prom.observe latency) requestLatency
+        let method = Just $ BS.unpack (Wai.requestMethod req)
+        let status = Just $ show (HTTP.statusCode (Wai.responseStatus res))
+        observeMicroSeconds handler method status start end
         respond res
+
+-- | Instrument an IO action with timing metrics. This function can be used if
+-- you would like to get more fine grained metrics, for instance this can be
+-- used to instrument individual end points.
+--
+-- If you use this function you will likely want to override the default value
+-- of 'prometheusInstrumentApp' to be false so that your app does not get double
+-- instrumented.
+instrumentIO :: String  -- ^ The label used to identify this IO operation
+             -> IO a    -- ^ The IO action to instrument
+             -> IO a    -- ^ The instrumented app
+instrumentIO label io = do
+    start  <- getCurrentTime
+    result <- io
+    end    <- getCurrentTime
+    observeMicroSeconds label Nothing Nothing start end
+    pure result
+
+observeMicroSeconds :: String -> Maybe String -> Maybe String -> UTCTime -> UTCTime -> IO ()
+observeMicroSeconds handler method status start end = do
+    let latency = fromRational $ toRational (end `diffUTCTime` start) * 1000000
+    Prom.withLabel (handler, fromMaybe "" method, fromMaybe "" status)
+                   (Prom.observe latency)
+                   requestLatency
 
 -- | Expose Prometheus metrics and instrument an application with some basic
 -- metrics (e.g. request latency).
