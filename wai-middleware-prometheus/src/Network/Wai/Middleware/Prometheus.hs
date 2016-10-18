@@ -86,7 +86,7 @@ instrumentIO label io = do
     result <- io
     end    <- getCurrentTime
     observeMicroSeconds label Nothing Nothing start end
-    pure result
+    return result
 
 observeMicroSeconds :: String -> Maybe String -> Maybe String -> UTCTime -> UTCTime -> IO ()
 observeMicroSeconds handler method status start end = do
