@@ -17,7 +17,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
             result `shouldBe` BS.fromString (unlines [
                     "# HELP test_counter help string"
                 ,   "# TYPE test_counter counter"
-                ,   "test_counter 1"
+                ,   "test_counter 1.0"
                 ])
       it "renders gauges" $ do
             m <- registerIO $ gauge (Info "test_gauge" "help string")
@@ -51,7 +51,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
             result `shouldBe` BS.fromString (unlines [
                     "# HELP test_counter help string"
                 ,   "# TYPE test_counter counter"
-                ,   "test_counter{handler=\"root\",method=\"GET\"} 1"
+                ,   "test_counter{handler=\"root\",method=\"GET\"} 1.0"
                 ])
       it "escapes newlines and slashes from help strings" $ do
             _ <- registerIO $ counter (Info "metric" "help \n \\string")
@@ -59,5 +59,5 @@ spec = before_ unregisterAll $ after_ unregisterAll $
             result `shouldBe` BS.fromString (unlines [
                     "# HELP metric help \\n \\\\string"
                 ,   "# TYPE metric counter"
-                ,   "metric 0"
+                ,   "metric 0.0"
                 ])
