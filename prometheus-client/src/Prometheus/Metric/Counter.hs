@@ -12,6 +12,7 @@ import Prometheus.Info
 import Prometheus.Metric
 import Prometheus.MonadMonitor
 
+import Control.Monad (unless)
 import Data.Time.Clock (diffUTCTime, getCurrentTime)
 import qualified Data.Atomics as Atomics
 import qualified Data.ByteString.UTF8 as BS
@@ -43,19 +44,18 @@ incCounter c = withCounter c (+ 1)
 -- | Add the given value to the counter, if it is zero or more.
 addCounter :: MonadMonitor m => Double -> Metric Counter -> m Bool
 addCounter x c
-  | x < 0 = pure False
+  | x < 0 = return False
   | otherwise = do
       withCounter c add
-      pure True
+      return True
   where add i = i `seq` x `seq` i + x
 
 -- | Add the given value to the counter. Panic if it is less than zero.
 unsafeAddCounter :: MonadMonitor m => Double -> Metric Counter -> m ()
 unsafeAddCounter x c = do
   added <- addCounter x c
-  if added
-    then pure ()
-    else error $ "Tried to add negative value to counter: " ++ show x
+  unless added $
+    error $ "Tried to add negative value to counter: " ++ show x
 
 -- | Add the duration of an IO action (in seconds) to a counter.
 addDurationToCounter :: IO a -> Metric Counter -> IO a
