@@ -28,7 +28,7 @@ import qualified Data.ByteString.UTF8 as BS
 -- >>> exportMetricsAsText >>= Data.ByteString.putStr
 -- # HELP my_counter Example counter
 -- # TYPE my_counter counter
--- my_counter 1
+-- my_counter 1.0
 exportMetricsAsText :: IO BS.ByteString
 exportMetricsAsText = do
     samples <- collectMetrics

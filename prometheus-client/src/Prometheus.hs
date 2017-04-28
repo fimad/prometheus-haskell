@@ -28,17 +28,26 @@ module Prometheus (
 
 -- ** Counter
 --
--- | A counter models a monotonically increasing integer value. It is the
--- simplest type of metric provided by this library.
+-- | A counter models a monotonically increasing value. It is the simplest
+-- type of metric provided by this library.
+--
+-- A Counter is typically used to count requests served, tasks completed,
+-- errors occurred, etc.
 --
 -- >>> myCounter <- counter (Info "my_counter" "An example counter")
 -- >>> replicateM_ 47 (incCounter myCounter)
 -- >>> getCounter myCounter
--- 47
+-- 47.0
+-- >>> void $ addCounter 10 myCounter
+-- >>> getCounter myCounter
+-- 57.0
 
 ,   Counter
 ,   counter
 ,   incCounter
+,   addCounter
+,   unsafeAddCounter
+,   addDurationToCounter
 ,   getCounter
 
 -- ** Gauge
@@ -94,13 +103,13 @@ module Prometheus (
 -- >>> withLabel ("GET", "404") incCounter myVector
 -- >>> withLabel ("POST", "200") incCounter myVector
 -- >>> getVectorWith getCounter myVector
--- [(("GET","200"),2),(("GET","404"),1),(("POST","200"),1)]
+-- [(("GET","200"),2.0),(("GET","404"),1.0),(("POST","200"),1.0)]
 -- >>> exportMetricsAsText >>= Data.ByteString.putStr
 -- # HELP http_requests
 -- # TYPE http_requests counter
--- http_requests{method="GET",code="200"} 2
--- http_requests{method="GET",code="404"} 1
--- http_requests{method="POST",code="200"} 1
+-- http_requests{method="GET",code="200"} 2.0
+-- http_requests{method="GET",code="404"} 1.0
+-- http_requests{method="POST",code="200"} 1.0
 
 ,   Vector
 ,   vector
@@ -188,10 +197,10 @@ module Prometheus (
 -- >>> let add x y = incCounter numAdds >> return (x + y)
 -- >>> let (3, updateMetrics) = runMonitor $ (add 1 1) >>= (add 1)
 -- >>> getCounter numAdds
--- 0
+-- 0.0
 -- >>> updateMetrics
 -- >>> getCounter numAdds
--- 2
+-- 2.0
 
 ,   MonadMonitor (..)
 ,   Monitor
