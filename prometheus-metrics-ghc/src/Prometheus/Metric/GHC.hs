@@ -140,4 +140,4 @@ showCollector name help sampleType ioInt = do
     value <- ioInt
     let info = Info name help
     let valueBS = BS.fromString $ show value
-    return [SampleGroup info GaugeType [Sample name [] valueBS]]
+    return [SampleGroup info sampleType [Sample name [] valueBS]]
