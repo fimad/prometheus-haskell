@@ -25,6 +25,10 @@ import Numeric (showFFloat)
 -- specified buckets.
 newtype Histogram = MkHistogram (STM.TVar BucketCounts)
 
+-- | Create a new 'Histogram' metric with a given name, help string, and
+-- list of buckets. Panics if the list of buckets is not strictly increasing.
+-- A good default list of buckets is 'defaultBuckets'. You can also create
+-- buckets with 'linearBuckets' or 'exponentialBuckets'.
 histogram :: Info -> [Bucket] -> IO (Metric Histogram)
 histogram info buckets = do
   countsTVar <- STM.newTVarIO  (emptyCounts buckets)
@@ -49,7 +53,11 @@ data BucketCounts = BucketCounts {
 } deriving (Show, Eq, Ord)
 
 emptyCounts :: [Bucket] -> BucketCounts
-emptyCounts buckets = BucketCounts 0 0 $ Map.fromList (zip buckets (repeat 0))
+emptyCounts buckets
+    | isStrictlyIncreasing buckets = BucketCounts 0 0 $ Map.fromList (zip buckets (repeat 0))
+    | otherwise = error ("Histogram buckets must be in increasing order, got: " ++ show buckets)
+    where
+         isStrictlyIncreasing xs = and (zipWith (<) xs (tail xs))
 
 instance Observer Histogram where
     -- | Add a new observation to a histogram metric.
