@@ -63,14 +63,20 @@ module Prometheus (
 ,   setGaugeToDuration
 ,   getGauge
 
--- ** Observers
+-- ** Summaries and histograms
 --
--- | An observer is a generic metric that captures observations of a
+-- | An 'Observer' is a generic metric that captures observations of a
 -- floating point value over time. Different implementations can store
 -- and summarise these value in different ways.
+--
+-- The two main observers are summaries and histograms. A 'Summary' allows you
+-- to get a precise estimate of a particular quantile, but cannot be meaningfully
+-- aggregated across processes. A 'Histogram' packs requests into user-supplied
+-- buckets, which /can/ be aggregated meaningfully, but provide much less precise
+-- information on particular quantiles.
+
 ,   Observer(..)
 ,   observeDuration
-
 
 -- *** Summary
 --
@@ -88,6 +94,17 @@ module Prometheus (
 ,   summary
 ,   defaultQuantiles
 ,   getSummary
+
+-- *** Histogram
+--
+-- | A histogram captures observations of a floating point value over time
+-- and stores those observations in a user-supplied histogram. A typical use case
+-- for histograms is measuring HTTP request latency. Histograms are unlike
+-- summaries in that they can be meaningfully aggregated across processes.
+
+,   Histogram
+,   histogram
+,   defaultBuckets
 
 -- ** Vector
 --
@@ -221,6 +238,7 @@ import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.Metric.Counter
 import Prometheus.Metric.Gauge
+import Prometheus.Metric.Histogram
 import Prometheus.Metric.Observer
 import Prometheus.Metric.Summary
 import Prometheus.Metric.Vector

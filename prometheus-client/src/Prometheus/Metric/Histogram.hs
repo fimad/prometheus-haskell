@@ -1,0 +1,104 @@
+module Prometheus.Metric.Histogram (
+    Histogram
+,   histogram
+,   defaultBuckets
+
+-- * Exported for testing
+,   BucketCounts(..)
+,   insert
+,   emptyCounts
+) where
+
+import Prometheus.Info
+import Prometheus.Metric
+import Prometheus.Metric.Observer
+import Prometheus.MonadMonitor
+
+import qualified Control.Concurrent.STM as STM
+import qualified Data.ByteString.UTF8 as BS
+import qualified Data.Map.Strict as Map
+import Numeric (showFFloat)
+
+-- | A histogram. Counts the number of observations that fall within the
+-- specified buckets.
+newtype Histogram = MkHistogram (STM.TVar BucketCounts)
+
+histogram :: Info -> [Bucket] -> IO (Metric Histogram)
+histogram info buckets = do
+  countsTVar <- STM.newTVarIO  (emptyCounts buckets)
+  return Metric {
+          handle = MkHistogram countsTVar
+      ,   collect = collectHistogram info countsTVar
+      }
+
+-- | Upper-bound for a histogram bucket.
+type Bucket = Double
+
+-- | Current state of a histogram.
+data BucketCounts = BucketCounts {
+    -- | The sum of all the observations.
+    histTotal :: !Double
+    -- | The number of observations that have been made.
+,   histCount :: !Int
+    -- | Counts for each bucket. The key is the upper-bound,
+    -- value is the number of observations less-than-or-equal-to
+    -- that upper bound, but greater than the next lowest upper bound.
+,   histCountsPerBucket :: Map.Map Bucket Int
+} deriving (Show, Eq, Ord)
+
+emptyCounts :: [Bucket] -> BucketCounts
+emptyCounts buckets = BucketCounts 0 0 $ Map.fromList (zip buckets (repeat 0))
+
+instance Observer Histogram where
+    -- | Add a new observation to a histogram metric.
+    observe v h = withHistogram h (insert v)
+
+-- | Transform the contents of a histogram.
+withHistogram :: MonadMonitor m
+              => Metric Histogram -> (BucketCounts -> BucketCounts) -> m ()
+withHistogram Metric {handle = MkHistogram bucketCounts} f =
+  doIO $ STM.atomically $ STM.modifyTVar' bucketCounts f
+
+-- | Record an observation.
+insert :: Double -> BucketCounts -> BucketCounts
+insert value BucketCounts { histTotal = total, histCount = count, histCountsPerBucket = counts } =
+    BucketCounts (total + value) (count + 1) incCounts
+    where
+        incCounts =
+            case Map.lookupGE value counts of
+                Nothing -> counts
+                Just (upperBound, _) -> Map.adjust (+1) upperBound counts
+
+-- | Collect the current state of a histogram.
+collectHistogram :: Info -> STM.TVar BucketCounts -> IO [SampleGroup]
+collectHistogram info bucketCounts = STM.atomically $ do
+    BucketCounts total count counts <- STM.readTVar bucketCounts
+    let sumSample = Sample (name ++ "_sum") [] (bsShow total)
+    let countSample = Sample (name ++ "_count") [] (bsShow count)
+    let infSample = Sample name [(bucketLabel, "+Inf")] (bsShow count)
+    let samples = map toSample (cumulativeSum (Map.toAscList counts))
+    return [SampleGroup info HistogramType $ samples ++ [infSample, sumSample, countSample]]
+    where
+        toSample (upperBound, count') =
+            Sample name [(bucketLabel, formatFloat upperBound)] $ bsShow count'
+        name = metricName info
+
+        -- We don't particularly want scientific notation, so force regular
+        -- numeric representation instead.
+        formatFloat x = showFFloat Nothing x ""
+
+        cumulativeSum xs = zip (map fst xs) (scanl1 (+) (map snd xs))
+
+        bsShow :: Show s => s -> BS.ByteString
+        bsShow = BS.fromString . show
+
+-- | The label that defines the upper bound of a bucket of a histogram. @"le"@
+-- is short for "less than or equal to".
+bucketLabel :: String
+bucketLabel = "le"
+
+-- | The default Histogram buckets. These are tailored to measure the response
+-- time (in seconds) of a network service. You will almost certainly need to
+-- customize them for your particular use case.
+defaultBuckets :: [Double]
+defaultBuckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
