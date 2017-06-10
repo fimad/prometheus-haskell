@@ -63,11 +63,20 @@ module Prometheus (
 ,   setGaugeToDuration
 ,   getGauge
 
--- ** Summary
+-- ** Observers
 --
--- | A summary captures observations of a floating point value over time and
--- summarizes the observations as a count, sum, and rank estimations. A typical
--- use case for summaries is measuring HTTP request latency.
+-- | An observer is a generic metric that captures observations of a
+-- floating point value over time. Different implementations can store
+-- and summarise these value in different ways.
+,   Observer(..)
+,   observeDuration
+
+
+-- *** Summary
+--
+-- | A summary is an 'Observer' that summarizes the observations as a count,
+-- sum, and rank estimations. A typical use case for summaries is measuring
+-- HTTP request latency.
 --
 -- >>> mySummary <- summary (Info "my_summary" "") defaultQuantiles
 -- >>> observe 0 mySummary
@@ -78,8 +87,6 @@ module Prometheus (
 ,   Quantile
 ,   summary
 ,   defaultQuantiles
-,   observe
-,   observeDuration
 ,   getSummary
 
 -- ** Vector
@@ -214,6 +221,7 @@ import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.Metric.Counter
 import Prometheus.Metric.Gauge
+import Prometheus.Metric.Observer
 import Prometheus.Metric.Summary
 import Prometheus.Metric.Vector
 import Prometheus.MonadMonitor

@@ -28,6 +28,7 @@ library
     , Prometheus.Metric
     , Prometheus.Metric.Counter
     , Prometheus.Metric.Gauge
+    , Prometheus.Metric.Observer
     , Prometheus.Metric.Summary
     , Prometheus.Metric.Vector
     , Prometheus.MonadMonitor
