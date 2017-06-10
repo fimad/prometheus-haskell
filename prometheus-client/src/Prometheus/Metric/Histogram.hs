@@ -2,6 +2,8 @@ module Prometheus.Metric.Histogram (
     Histogram
 ,   histogram
 ,   defaultBuckets
+,   exponentialBuckets
+,   linearBuckets
 
 -- * Exported for testing
 ,   BucketCounts(..)
@@ -102,3 +104,20 @@ bucketLabel = "le"
 -- customize them for your particular use case.
 defaultBuckets :: [Double]
 defaultBuckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+
+-- | Create @count@ buckets, each @width@ wide, where the lowest bucket has an
+-- upper bound of @start@. Use this to create buckets for 'histogram'.
+linearBuckets :: Bucket -> Double -> Int -> [Bucket]
+linearBuckets start width count
+    | count <= 0 = error ("Must provide a positive number of linear buckets, got: " ++ show count)
+    | otherwise = take count (iterate (width+) start)
+
+-- | Create @count@ buckets, where the lowest bucket has an upper bound of @start@
+-- and each bucket's upper bound is @factor@ times the previous bucket's upper bound.
+-- Use this to create buckets for 'histogram'.
+exponentialBuckets :: Bucket -> Double -> Int -> [Bucket]
+exponentialBuckets start factor count
+    | count <= 0 = error ("Must provide a positive number of exponential buckets, got: " ++ show count)
+    | factor <= 1 = error ("Exponential buckets must have factor greater than 1 to ensure upper bounds are monotonically increasing, got: " ++ show factor)
+    | start <= 0 = error ("Exponential buckets must have positive number for start bucket to ensure upper bounds are monotonically increasing, got: " ++ show start)
+    | otherwise = take count (iterate (factor*) start)

@@ -105,6 +105,8 @@ module Prometheus (
 ,   Histogram
 ,   histogram
 ,   defaultBuckets
+,   exponentialBuckets
+,   linearBuckets
 
 -- ** Vector
 --
