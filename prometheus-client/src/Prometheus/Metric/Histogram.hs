@@ -9,6 +9,7 @@ module Prometheus.Metric.Histogram (
 ,   BucketCounts(..)
 ,   insert
 ,   emptyCounts
+,   getHistogram
 ) where
 
 import Prometheus.Info
@@ -68,6 +69,13 @@ withHistogram :: MonadMonitor m
               => Metric Histogram -> (BucketCounts -> BucketCounts) -> m ()
 withHistogram Metric {handle = MkHistogram bucketCounts} f =
   doIO $ STM.atomically $ STM.modifyTVar' bucketCounts f
+
+-- | Retries a map of upper bounds to counts of values observed that are
+-- less-than-or-equal-to that upper bound, but greater than any other upper
+-- bound in the map.
+getHistogram :: Metric Histogram -> IO (Map.Map Bucket Int)
+getHistogram Metric {handle = MkHistogram bucketsTVar} =
+    histCountsPerBucket <$> STM.atomically (STM.readTVar bucketsTVar)
 
 -- | Record an observation.
 insert :: Double -> BucketCounts -> BucketCounts

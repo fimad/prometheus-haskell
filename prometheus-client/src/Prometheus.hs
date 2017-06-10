@@ -101,12 +101,17 @@ module Prometheus (
 -- and stores those observations in a user-supplied histogram. A typical use case
 -- for histograms is measuring HTTP request latency. Histograms are unlike
 -- summaries in that they can be meaningfully aggregated across processes.
-
+--
+-- >>> myHistogram <- histogram (Info "my_histogram" "") defaultBuckets
+-- >>> observe 0 myHistogram
+-- >>> getHistogram myHistogram
+-- fromList [(5.0e-3,1),(1.0e-2,0),(2.5e-2,0),(5.0e-2,0),(0.1,0),(0.25,0),(0.5,0),(1.0,0),(2.5,0),(5.0,0),(10.0,0)]
 ,   Histogram
 ,   histogram
 ,   defaultBuckets
 ,   exponentialBuckets
 ,   linearBuckets
+,   getHistogram
 
 -- ** Vector
 --
