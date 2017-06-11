@@ -17,6 +17,7 @@ import Prometheus.Metric
 import Prometheus.Metric.Observer
 import Prometheus.MonadMonitor
 
+import Control.Applicative ((<$>))
 import qualified Control.Concurrent.STM as STM
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.Map.Strict as Map
