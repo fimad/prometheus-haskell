@@ -4,6 +4,7 @@ module Prometheus.Metric.HistogramSpec (
 
 import Prometheus.Metric.Histogram
 
+import qualified Data.Map.Strict as Map
 import Test.Hspec
 import Test.QuickCheck
 
@@ -22,7 +23,7 @@ invariantTests = do
 prop_totalCountVsCountPerBucket :: [Double] -> Bool
 prop_totalCountVsCountPerBucket observations =
     let bucketCounts = bucketCountsAfterObserving observations
-    in  sum (histCountsPerBucket bucketCounts) <= histCount bucketCounts
+    in  sum (Map.elems (histCountsPerBucket bucketCounts)) <= histCount bucketCounts
 
 bucketCountsAfterObserving :: [Double] -> BucketCounts
 bucketCountsAfterObserving = foldr insert (emptyCounts defaultBuckets)
