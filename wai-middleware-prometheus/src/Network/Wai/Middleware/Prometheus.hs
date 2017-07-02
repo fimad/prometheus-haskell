@@ -52,8 +52,8 @@ instance Default.Default PrometheusSettings where
 requestLatency :: Prom.Metric (Prom.Vector Prom.Label3 Prom.Summary)
 requestLatency = Prom.unsafeRegisterIO $ Prom.vector ("handler", "method", "status_code")
                                        $ Prom.summary info Prom.defaultQuantiles
-    where info = Prom.Info "http_request_duration_microseconds"
-                           "The HTTP request latencies in microseconds."
+    where info = Prom.Info "http_request_duration_seconds"
+                           "The HTTP request latencies in seconds."
 
 -- | Instrument a WAI app with the default WAI metrics.
 --
@@ -69,7 +69,7 @@ instrumentApp handler app req respond = do
         end <- getTime Monotonic
         let method = Just $ BS.unpack (Wai.requestMethod req)
         let status = Just $ show (HTTP.statusCode (Wai.responseStatus res))
-        observeMicroSeconds handler method status start end
+        observeSeconds handler method status start end
         respond res
 
 -- | Instrument an IO action with timing metrics. This function can be used if
@@ -86,12 +86,12 @@ instrumentIO label io = do
     start  <- getTime Monotonic
     result <- io
     end    <- getTime Monotonic
-    observeMicroSeconds label Nothing Nothing start end
+    observeSeconds label Nothing Nothing start end
     return result
 
-observeMicroSeconds :: String -> Maybe String -> Maybe String -> TimeSpec -> TimeSpec -> IO ()
-observeMicroSeconds handler method status start end = do
-    let latency = fromRational $ toRational (toNanoSecs (end `diffTimeSpec` start) % 1000)
+observeSeconds :: String -> Maybe String -> Maybe String -> TimeSpec -> TimeSpec -> IO ()
+observeSeconds handler method status start end = do
+    let latency = fromRational $ toRational (toNanoSecs (end `diffTimeSpec` start) % 1000000000)
     Prom.withLabel (handler, fromMaybe "" method, fromMaybe "" status)
                    (Prom.observe latency)
                    requestLatency
