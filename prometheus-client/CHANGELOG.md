@@ -2,6 +2,10 @@
 
 ## HEAD
 
+- Add the histogram metric type (#15).
+- A monitoric clock is used for duratoin measurments instead of UTCTime (#9,
+  #16).
+
 ## 0.1.1
 
 - Counters are now represented as floating point numbers instead of integers.
