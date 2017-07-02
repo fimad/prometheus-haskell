@@ -1,6 +1,7 @@
 module Prometheus.Metric.Observer (
     Observer(..)
 ,   observeDuration
+,   timeAction
 ) where
 
 import Prometheus.Metric
@@ -18,9 +19,16 @@ class Observer metric where
 -- observer metric.
 observeDuration :: Observer metric => IO a -> Metric metric -> IO a
 observeDuration io metric = do
+    (result, duration) <- timeAction io
+    observe duration metric
+    return result
+
+
+-- | Evaluate @io@ and return its result as well as how long it took to evaluate,
+-- in seconds.
+timeAction :: IO a -> IO (a, Double)
+timeAction io = do
     start  <- getCurrentTime
     result <- io
     end    <- getCurrentTime
-    observe (fromRational $ toRational $ end `diffUTCTime` start) metric
-    return result
-
+    return (result, fromRational $ toRational $ end `diffUTCTime` start)

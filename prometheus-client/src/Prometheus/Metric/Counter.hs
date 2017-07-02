@@ -10,10 +10,10 @@ module Prometheus.Metric.Counter (
 
 import Prometheus.Info
 import Prometheus.Metric
+import Prometheus.Metric.Observer (timeAction)
 import Prometheus.MonadMonitor
 
 import Control.Monad (unless)
-import Data.Time.Clock (diffUTCTime, getCurrentTime)
 import qualified Data.Atomics as Atomics
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.IORef as IORef
@@ -60,10 +60,8 @@ unsafeAddCounter x c = do
 -- | Add the duration of an IO action (in seconds) to a counter.
 addDurationToCounter :: IO a -> Metric Counter -> IO a
 addDurationToCounter io metric = do
-    start  <- getCurrentTime
-    result <- io
-    end    <- getCurrentTime
-    addCounter (fromRational $ toRational $ end `diffUTCTime` start) metric
+    (result, duration) <- timeAction io
+    _ <- addCounter duration metric
     return result
 
 -- | Retrieves the current value of a counter metric.
