@@ -72,11 +72,26 @@ module Prometheus (
 ,   setGaugeToDuration
 ,   getGauge
 
--- ** Summary
+-- ** Summaries and histograms
 --
--- | A summary captures observations of a floating point value over time and
--- summarizes the observations as a count, sum, and rank estimations. A typical
--- use case for summaries is measuring HTTP request latency.
+-- | An 'Observer' is a generic metric that captures observations of a
+-- floating point value over time. Different implementations can store
+-- and summarise these value in different ways.
+--
+-- The two main observers are summaries and histograms. A 'Summary' allows you
+-- to get a precise estimate of a particular quantile, but cannot be meaningfully
+-- aggregated across processes. A 'Histogram' packs requests into user-supplied
+-- buckets, which /can/ be aggregated meaningfully, but provide much less precise
+-- information on particular quantiles.
+
+,   Observer(..)
+,   observeDuration
+
+-- *** Summary
+--
+-- | A summary is an 'Observer' that summarizes the observations as a count,
+-- sum, and rank estimations. A typical use case for summaries is measuring
+-- HTTP request latency.
 --
 -- >>> mySummary <- summary (Info "my_summary" "") defaultQuantiles
 -- >>> observe 0 mySummary
@@ -87,9 +102,25 @@ module Prometheus (
 ,   Quantile
 ,   summary
 ,   defaultQuantiles
-,   observe
-,   observeDuration
 ,   getSummary
+
+-- *** Histogram
+--
+-- | A histogram captures observations of a floating point value over time
+-- and stores those observations in a user-supplied histogram. A typical use case
+-- for histograms is measuring HTTP request latency. Histograms are unlike
+-- summaries in that they can be meaningfully aggregated across processes.
+--
+-- >>> myHistogram <- histogram (Info "my_histogram" "") defaultBuckets
+-- >>> observe 0 myHistogram
+-- >>> getHistogram myHistogram
+-- fromList [(5.0e-3,1),(1.0e-2,0),(2.5e-2,0),(5.0e-2,0),(0.1,0),(0.25,0),(0.5,0),(1.0,0),(2.5,0),(5.0,0),(10.0,0)]
+,   Histogram
+,   histogram
+,   defaultBuckets
+,   exponentialBuckets
+,   linearBuckets
+,   getHistogram
 
 -- ** Vector
 --
@@ -223,6 +254,8 @@ import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.Metric.Counter
 import Prometheus.Metric.Gauge
+import Prometheus.Metric.Histogram
+import Prometheus.Metric.Observer
 import Prometheus.Metric.Summary
 import Prometheus.Metric.Vector
 import Prometheus.MonadMonitor

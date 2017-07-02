@@ -43,6 +43,30 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "metric_sum 3.0"
                 ,   "metric_count 3"
                 ])
+      it "renders histograms" $ do
+            m <- registerIO $ histogram (Info "metric" "help") defaultBuckets
+            observe 1.0 m
+            observe 1.0 m
+            observe 1.0 m
+            result <- exportMetricsAsText
+            result `shouldBe` BS.fromString (unlines [
+                    "# HELP metric help"
+                ,   "# TYPE metric histogram"
+                ,   "metric{le=\"0.005\"} 0"
+                ,   "metric{le=\"0.01\"} 0"
+                ,   "metric{le=\"0.025\"} 0"
+                ,   "metric{le=\"0.05\"} 0"
+                ,   "metric{le=\"0.1\"} 0"
+                ,   "metric{le=\"0.25\"} 0"
+                ,   "metric{le=\"0.5\"} 0"
+                ,   "metric{le=\"1.0\"} 3"
+                ,   "metric{le=\"2.5\"} 3"
+                ,   "metric{le=\"5.0\"} 3"
+                ,   "metric{le=\"10.0\"} 3"
+                ,   "metric{le=\"+Inf\"} 3"
+                ,   "metric_sum 3.0"
+                ,   "metric_count 3"
+                ])
       it "renders vectors" $ do
             m <- registerIO $ vector ("handler", "method")
                             $ counter (Info "test_counter" "help string")
