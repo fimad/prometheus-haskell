@@ -2,6 +2,8 @@
 
 ## HEAD
 
+## 0.2.0
+
 ## 0.1.1
 
 - Metrics that are always incrementing are now counters instead of gauges.

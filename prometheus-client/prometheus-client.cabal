@@ -1,5 +1,5 @@
 name:                prometheus-client
-version:             0.1.1
+version:             0.2.0
 synopsis:            Haskell client library for http://prometheus.io.
 description:         Haskell client library for http://prometheus.io.
 homepage:            https://github.com/fimad/prometheus-haskell
