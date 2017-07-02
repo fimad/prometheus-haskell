@@ -11,15 +11,16 @@ module Network.Wai.Middleware.Prometheus (
 ,   metricsApp
 ) where
 
-import Data.Time.Clock (UTCTime, diffUTCTime, getCurrentTime)
 import qualified Data.ByteString.Builder as BS
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Default as Default
 import Data.Maybe (fromMaybe)
+import Data.Ratio ((%))
 import qualified Data.Text as T
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.Wai as Wai
 import qualified Prometheus as Prom
+import System.Clock (Clock(..), TimeSpec, diffTimeSpec, getTime, toNanoSecs)
 
 
 -- | Settings that control the behavior of the Prometheus middleware.
@@ -63,9 +64,9 @@ instrumentApp :: String           -- ^ The label used to identify this app
               -> Wai.Application  -- ^ The app to instrument
               -> Wai.Application  -- ^ The instrumented app
 instrumentApp handler app req respond = do
-    start <- getCurrentTime
+    start <- getTime Monotonic
     app req $ \res -> do
-        end <- getCurrentTime
+        end <- getTime Monotonic
         let method = Just $ BS.unpack (Wai.requestMethod req)
         let status = Just $ show (HTTP.statusCode (Wai.responseStatus res))
         observeMicroSeconds handler method status start end
@@ -82,15 +83,15 @@ instrumentIO :: String  -- ^ The label used to identify this IO operation
              -> IO a    -- ^ The IO action to instrument
              -> IO a    -- ^ The instrumented app
 instrumentIO label io = do
-    start  <- getCurrentTime
+    start  <- getTime Monotonic
     result <- io
-    end    <- getCurrentTime
+    end    <- getTime Monotonic
     observeMicroSeconds label Nothing Nothing start end
     return result
 
-observeMicroSeconds :: String -> Maybe String -> Maybe String -> UTCTime -> UTCTime -> IO ()
+observeMicroSeconds :: String -> Maybe String -> Maybe String -> TimeSpec -> TimeSpec -> IO ()
 observeMicroSeconds handler method status start end = do
-    let latency = fromRational $ toRational (end `diffUTCTime` start) * 1000000
+    let latency = fromRational $ toRational (toNanoSecs (end `diffTimeSpec` start) % 1000)
     Prom.withLabel (handler, fromMaybe "" method, fromMaybe "" status)
                    (Prom.observe latency)
                    requestLatency

@@ -38,11 +38,11 @@ library
       atomic-primops     >=0.4
     , base               >=4.7 && <5
     , bytestring         >=0.9
+    , clock
     , containers
     , mtl                >=2
     , stm                >=2.3
     , transformers
-    , time
     , utf8-string
   ghc-options: -Wall
 
@@ -68,11 +68,11 @@ test-suite spec
     , base               >=4.7 && <5
     , bytestring
     , containers
+    , clock
     , hspec
     , mtl
     , random-shuffle
     , stm
-    , time
     , transformers
     , utf8-string
   ghc-options: -Wall

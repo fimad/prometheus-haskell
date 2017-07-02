@@ -1,12 +1,14 @@
 module Prometheus.Metric.Observer (
     Observer(..)
 ,   observeDuration
+,   timeAction
 ) where
 
+import Data.Ratio ((%))
 import Prometheus.Metric
 import Prometheus.MonadMonitor
 
-import Data.Time.Clock (diffUTCTime, getCurrentTime)
+import System.Clock (Clock(..), diffTimeSpec, getTime, toNanoSecs)
 
 -- | Interface shared by 'Summary' and 'Histogram'.
 class Observer metric where
@@ -18,9 +20,17 @@ class Observer metric where
 -- observer metric.
 observeDuration :: Observer metric => IO a -> Metric metric -> IO a
 observeDuration io metric = do
-    start  <- getCurrentTime
-    result <- io
-    end    <- getCurrentTime
-    observe (fromRational $ toRational $ end `diffUTCTime` start) metric
+    (result, duration) <- timeAction io
+    observe duration metric
     return result
 
+
+-- | Evaluate @io@ and return its result as well as how long it took to evaluate,
+-- in seconds.
+timeAction :: IO a -> IO (a, Double)
+timeAction io = do
+    start  <- getTime Monotonic
+    result <- io
+    end    <- getTime Monotonic
+    let duration = toNanoSecs (end `diffTimeSpec` start) % 1000000000
+    return (result, fromRational duration)
