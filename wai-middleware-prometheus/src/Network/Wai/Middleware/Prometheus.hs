@@ -47,8 +47,6 @@ instance Default.Default PrometheusSettings where
     }
 
 {-# NOINLINE requestLatency #-}
--- XXX: https://prometheus.io/docs/practices/naming/ says this should be
--- _seconds, not _microseconds.
 requestLatency :: Prom.Metric (Prom.Vector Prom.Label3 Prom.Histogram)
 requestLatency = Prom.unsafeRegisterIO $ Prom.vector ("handler", "method", "status_code")
                                        $ Prom.histogram info Prom.defaultBuckets
