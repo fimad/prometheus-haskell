@@ -1,44 +1,147 @@
+{-# language FlexibleContexts #-}
+
+module Main (main) where
+
 import Prometheus
 
 import Control.Monad
+import Criterion
 import Criterion.Main
+import Data.Foldable (for_)
 import System.Random
 
+withMetric m =
+  envWithCleanup
+    (registerIO m)
+    (const unregisterAll)
+
+withCounter =
+  withMetric (counter (Info "a" "b"))
+
+withGauge =
+  withMetric (gauge (Info "a" "b"))
+
+withSummary quantiles =
+  withMetric (summary (Info "a" "b") quantiles)
+
+withHistogram buckets =
+  withMetric (histogram (Info "a" "b") buckets)
 
 main :: IO ()
-main = defaultMain [
-        bgroup "incCounter" $ expandBenches incCounterThenCollect
-    ,   bgroup "withLabelIncCounter" $ expandBenches withLabelIncCounter
-    ,   bgroup "addGauge" $ expandBenches $ withGaugeThenCollect (addGauge 47.0)
-    ,   bgroup "subGauge" $ expandBenches $ withGaugeThenCollect (subGauge 47.0)
-    ,   bgroup "setGauge" $ expandBenches $ withGaugeThenCollect (setGauge 47.0)
-    ,   bgroup "observe" $ expandBenches observeThenCollect
+main =
+  defaultMain
+    [ benchCounter
+    , benchGauge
+    , benchSummary
+    , benchHistogram
+    , benchExport
     ]
 
-expandBenches :: (Int -> IO a) -> [Benchmark]
-expandBenches = flip expand [1, 10, 100, 1000, 10000]
-    where expand b = map (\i -> bench (show i) (whnfIO (b i)))
 
-incCounterThenCollect :: Int -> IO [SampleGroup]
-incCounterThenCollect i = do
-    c <- counter (Info "name" "help")
-    replicateM_ i (incCounter c)
-    collect c
+-- Counter benchmarks
 
-withLabelIncCounter :: Int -> IO [SampleGroup]
-withLabelIncCounter i = do
-    v <- vector ("a", "b")  $ counter (Info "name" "help")
-    replicateM_ i (withLabel ("c", "d") incCounter v)
-    collect v
 
-withGaugeThenCollect :: (Metric Gauge -> IO ()) -> Int -> IO [SampleGroup]
-withGaugeThenCollect a i = do
-    g <- gauge (Info "name" "help")
-    replicateM_ i (a g)
-    collect g
+benchCounter =
+  withCounter $ \counter ->
+    bgroup "Counter"
+      [ benchIncCounter counter
+      , benchAddCounter counter
+      , benchAddDurationToCounter counter
+      ]
 
-observeThenCollect :: Int -> IO [SampleGroup]
-observeThenCollect i = do
-    s <- summary (Info "name" "help") defaultQuantiles
-    replicateM_ i (randomIO >>= flip observe s)
-    collect s
+benchIncCounter testCounter =
+  bench "incCounter" $ whnfIO (incCounter testCounter)
+
+benchAddCounter testCounter =
+  bench "addCounter" $ whnfIO (addCounter 50 testCounter)
+
+benchAddDurationToCounter testCounter =
+  bench "addDurationToCounter" $ whnfIO (addDurationToCounter (return ()) testCounter)
+
+
+
+-- Gauge benchmarks
+
+
+benchGauge =
+  withGauge $ \gauge ->
+    bgroup "Gauge"
+      [ benchIncGauge gauge
+      , benchAddGauge gauge
+      , benchSubGauge gauge
+      , benchSetGaugeToDuration gauge
+      ]
+
+benchIncGauge testGauge =
+  bench "incGauge" $ whnfIO (incGauge testGauge)
+
+benchAddGauge testGauge =
+  bench "addGauge" $ whnfIO (addGauge 50 testGauge)
+
+benchSubGauge testGauge =
+  bench "subGauge" $ whnfIO (subGauge 50 testGauge)
+
+benchSetGaugeToDuration testGauge =
+  bench "setGaugeToDuration" $ whnfIO (setGaugeToDuration (return ()) testGauge)
+
+
+
+-- Summary benchmarks
+
+
+benchSummary =
+  bgroup "Summary"
+    (map benchSummaryWithQuantiles [defaultQuantiles])
+
+benchSummaryWithQuantiles q =
+  withSummary q $ \summary ->
+    bgroup ("Quantiles = " ++ show q)
+      [ benchSummaryObserve summary
+      ]
+
+benchSummaryObserve s =
+  bench "observe" $ whnfIO (observe 42 s)
+
+
+
+-- Histogram benchmarks
+
+
+benchHistogram =
+  bgroup "Histogram"
+    (map benchHistogramWithQuantiles [defaultBuckets])
+
+benchHistogramWithQuantiles q =
+  withHistogram q $ \histogram ->
+    bgroup ("Buckets = " ++ show q)
+      [ benchHistogramObserve histogram
+      ]
+
+benchHistogramObserve s =
+  bench "observe" $ whnfIO (observe 42 s)
+
+
+
+-- Exporter benchmarks
+
+benchExport =
+  bgroup "exportMetricsAsText"
+    [ bgroup "Export counters" (map benchExportCounters [100, 1000, 10000])
+    , bgroup "Export histograms" (map benchExportHistograms [100, 1000, 10000])
+    ]
+
+benchExportCounters nCounters =
+  envWithCleanup setup teardown ( const benchmark )
+  where
+    benchmark = bench (show nCounters ++ " counters") (nfIO exportMetricsAsText)
+    setup = replicateM_ nCounters $ do
+      registerIO $ counter (Info (show nCounters) "")
+    teardown _ = unregisterAll
+
+benchExportHistograms nHistograms =
+  envWithCleanup setup teardown ( const benchmark )
+  where
+    benchmark = bench (show nHistograms ++ " histograms") (nfIO exportMetricsAsText)
+    setup = replicateM_ nHistograms $ do
+      registerIO $ histogram (Info (show nHistograms) "") defaultBuckets
+    teardown _ = unregisterAll

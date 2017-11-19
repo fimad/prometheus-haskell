@@ -1,3 +1,5 @@
+{-# language GeneralizedNewtypeDeriving #-}
+
 module Prometheus.Metric.Counter (
     Counter
 ,   counter
@@ -13,6 +15,7 @@ import Prometheus.Metric
 import Prometheus.Metric.Observer (timeAction)
 import Prometheus.MonadMonitor
 
+import Control.DeepSeq
 import Control.Monad (unless)
 import qualified Data.Atomics as Atomics
 import qualified Data.ByteString.UTF8 as BS
@@ -20,6 +23,7 @@ import qualified Data.IORef as IORef
 
 
 newtype Counter = MkCounter (IORef.IORef Double)
+  deriving (NFData)
 
 -- | Creates a new counter metric with a given name and help string.
 counter :: Info -> IO (Metric Counter)

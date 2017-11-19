@@ -1,3 +1,5 @@
+{-# language GeneralizedNewtypeDeriving #-}
+
 module Prometheus.Metric.Histogram (
     Histogram
 ,   histogram
@@ -19,6 +21,7 @@ import Prometheus.MonadMonitor
 
 import Control.Applicative ((<$>))
 import qualified Control.Concurrent.STM as STM
+import Control.DeepSeq
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.Map.Strict as Map
 import Numeric (showFFloat)
@@ -26,6 +29,9 @@ import Numeric (showFFloat)
 -- | A histogram. Counts the number of observations that fall within the
 -- specified buckets.
 newtype Histogram = MkHistogram (STM.TVar BucketCounts)
+
+instance NFData Histogram where
+  rnf (MkHistogram a) = seq a ()
 
 -- | Create a new 'Histogram' metric with a given name, help string, and
 -- list of buckets. Panics if the list of buckets is not strictly increasing.

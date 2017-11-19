@@ -1,3 +1,5 @@
+{-# language GeneralizedNewtypeDeriving #-}
+
 module Prometheus.Metric.Summary (
     Summary
 ,   Quantile
@@ -22,6 +24,7 @@ import Prometheus.Metric
 import Prometheus.Metric.Observer
 import Prometheus.MonadMonitor
 
+import Control.DeepSeq
 import Data.Int (Int64)
 import Data.Foldable (foldr')
 import qualified Control.Concurrent.STM as STM
@@ -29,6 +32,9 @@ import qualified Data.ByteString.UTF8 as BS
 
 
 newtype Summary = MkSummary (STM.TVar Estimator)
+
+instance NFData Summary where
+  rnf (MkSummary a) = a `seq` ()
 
 -- | Creates a new summary metric with a given name, help string, and a list of
 -- quantiles. A reasonable set set of quantiles is provided by

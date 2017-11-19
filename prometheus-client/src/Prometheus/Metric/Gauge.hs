@@ -1,3 +1,4 @@
+{-# language GeneralizedNewtypeDeriving #-}
 module Prometheus.Metric.Gauge (
     Gauge
 ,   gauge
@@ -15,12 +16,14 @@ import Prometheus.Metric
 import Prometheus.Metric.Observer (timeAction)
 import Prometheus.MonadMonitor
 
+import Control.DeepSeq
 import qualified Data.Atomics as Atomics
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.IORef as IORef
 
 
 newtype Gauge = MkGauge (IORef.IORef Double)
+  deriving (NFData)
 
 -- | Create a new gauge metric with a given name and help string.
 gauge :: Info -> IO (Metric Gauge)

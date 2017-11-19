@@ -1,3 +1,5 @@
+{-# language GeneralizedNewtypeDeriving #-}
+
 module Prometheus.Metric (
     Metric (..)
 ,   Sample (..)
@@ -8,6 +10,7 @@ module Prometheus.Metric (
 import Prometheus.Info
 import Prometheus.Label
 
+import Control.DeepSeq
 import qualified Data.ByteString as BS
 
 
@@ -46,3 +49,6 @@ data Metric s = Metric {
         handle  :: s
     ,   collect :: IO [SampleGroup]
     }
+
+instance NFData a => NFData (Metric a) where
+  rnf (Metric a b) = rnf a `seq` b `seq` ()
