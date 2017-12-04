@@ -7,6 +7,7 @@ import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.Registry
 
+import Control.Monad.IO.Class
 import Data.List (intersperse, intercalate)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BS
@@ -29,7 +30,7 @@ import qualified Data.ByteString.UTF8 as BS
 -- # HELP my_counter Example counter
 -- # TYPE my_counter counter
 -- my_counter 1.0
-exportMetricsAsText :: IO BS.ByteString
+exportMetricsAsText :: MonadIO m => m BS.ByteString
 exportMetricsAsText = do
     samples <- collectMetrics
     let exportedSamples = map exportSampleGroup samples ++ [BS.empty]

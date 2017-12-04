@@ -16,6 +16,7 @@ import Prometheus.Metric.Observer (timeAction)
 import Prometheus.MonadMonitor
 
 import Control.DeepSeq
+import Control.Monad.IO.Class
 import Control.Monad (unless)
 import qualified Data.Atomics as Atomics
 import qualified Data.ByteString.UTF8 as BS
@@ -59,15 +60,17 @@ unsafeAddCounter x c = do
     error $ "Tried to add negative value to counter: " ++ show x
 
 -- | Add the duration of an IO action (in seconds) to a counter.
-addDurationToCounter :: IO a -> Counter -> IO a
+--
+-- If the IO action throws, no duration is added.
+addDurationToCounter :: (MonadIO m, MonadMonitor m) => m a -> Counter -> m a
 addDurationToCounter io metric = do
     (result, duration) <- timeAction io
     _ <- addCounter duration metric
     return result
 
 -- | Retrieves the current value of a counter metric.
-getCounter :: Counter -> IO Double
-getCounter (MkCounter ioref) = IORef.readIORef ioref
+getCounter :: MonadIO m => Counter -> m Double
+getCounter (MkCounter ioref) = liftIO $ IORef.readIORef ioref
 
 collectCounter :: Info -> IORef.IORef Double -> IO [SampleGroup]
 collectCounter info c = do

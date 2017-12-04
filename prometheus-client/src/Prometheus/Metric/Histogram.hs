@@ -22,6 +22,7 @@ import Prometheus.MonadMonitor
 import Control.Applicative ((<$>))
 import qualified Control.Concurrent.STM as STM
 import Control.DeepSeq
+import Control.Monad.IO.Class
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.Map.Strict as Map
 import Numeric (showFFloat)
@@ -77,9 +78,9 @@ withHistogram (MkHistogram bucketCounts) f =
 -- | Retries a map of upper bounds to counts of values observed that are
 -- less-than-or-equal-to that upper bound, but greater than any other upper
 -- bound in the map.
-getHistogram :: Histogram -> IO (Map.Map Bucket Int)
+getHistogram :: MonadIO m => Histogram -> m (Map.Map Bucket Int)
 getHistogram (MkHistogram bucketsTVar) =
-    histCountsPerBucket <$> STM.atomically (STM.readTVar bucketsTVar)
+    liftIO $ histCountsPerBucket <$> STM.atomically (STM.readTVar bucketsTVar)
 
 -- | Record an observation.
 insert :: Double -> BucketCounts -> BucketCounts

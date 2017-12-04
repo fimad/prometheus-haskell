@@ -25,6 +25,7 @@ import Prometheus.Metric.Observer
 import Prometheus.MonadMonitor
 
 import Control.DeepSeq
+import Control.Monad.IO.Class
 import Data.Int (Int64)
 import Data.Foldable (foldr')
 import qualified Control.Concurrent.STM as STM
@@ -56,8 +57,8 @@ instance Observer Summary where
     observe v s = withSummary s (insert v)
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
-getSummary :: Summary -> IO [(Rational, Double)]
-getSummary (MkSummary valueTVar) = do
+getSummary :: MonadIO m => Summary -> m [(Rational, Double)]
+getSummary (MkSummary valueTVar) = liftIO $ do
     estimator <- STM.atomically $ do
         STM.modifyTVar' valueTVar compress
         STM.readTVar valueTVar

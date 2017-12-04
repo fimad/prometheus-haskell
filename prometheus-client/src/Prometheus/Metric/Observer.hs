@@ -7,6 +7,7 @@ module Prometheus.Metric.Observer (
 import Data.Ratio ((%))
 import Prometheus.MonadMonitor
 
+import Control.Monad.IO.Class
 import System.Clock (Clock(..), diffTimeSpec, getTime, toNanoSecs)
 
 -- | Interface shared by 'Summary' and 'Histogram'.
@@ -17,7 +18,9 @@ class Observer metric where
 
 -- | Adds the duration in seconds of an IO action as an observation to an
 -- observer metric.
-observeDuration :: (Observer metric) => IO a -> metric -> IO a
+--
+-- If the IO action throws an exception no duration will be observed.
+observeDuration :: (Observer metric, MonadIO m, MonadMonitor m) => m a -> metric -> m a
 observeDuration io metric = do
     (result, duration) <- timeAction io
     observe duration metric
@@ -26,10 +29,10 @@ observeDuration io metric = do
 
 -- | Evaluate @io@ and return its result as well as how long it took to evaluate,
 -- in seconds.
-timeAction :: IO a -> IO (a, Double)
+timeAction :: MonadIO m => m a -> m (a, Double)
 timeAction io = do
-    start  <- getTime Monotonic
+    start  <- liftIO $ getTime Monotonic
     result <- io
-    end    <- getTime Monotonic
+    end    <- liftIO $ getTime Monotonic
     let duration = toNanoSecs (end `diffTimeSpec` start) % 1000000000
     return (result, fromRational duration)

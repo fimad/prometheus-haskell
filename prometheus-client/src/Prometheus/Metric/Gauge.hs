@@ -17,6 +17,7 @@ import Prometheus.Metric.Observer (timeAction)
 import Prometheus.MonadMonitor
 
 import Control.DeepSeq
+import Control.Monad.IO.Class
 import qualified Data.Atomics as Atomics
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.IORef as IORef
@@ -62,11 +63,11 @@ setGauge r g = withGauge g set
     where set _ = r
 
 -- | Retrieves the current value of a gauge metric.
-getGauge :: Gauge -> IO Double
-getGauge (MkGauge ioref) = IORef.readIORef ioref
+getGauge :: MonadIO m => Gauge -> m Double
+getGauge (MkGauge ioref) = liftIO $ IORef.readIORef ioref
 
 -- | Sets a gauge metric to the duration in seconds of an IO action.
-setGaugeToDuration :: IO a -> Gauge -> IO a
+setGaugeToDuration :: (MonadIO m, MonadMonitor m) => m a -> Gauge -> m a
 setGaugeToDuration io metric = do
     (result, duration) <- timeAction io
     setGauge duration metric
