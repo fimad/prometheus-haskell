@@ -67,7 +67,7 @@ emptyCounts buckets
 
 instance Observer Histogram where
     -- | Add a new observation to a histogram metric.
-    observe v h = withHistogram h (insert v)
+    observe h v = withHistogram h (insert v)
 
 -- | Transform the contents of a histogram.
 withHistogram :: MonadMonitor m

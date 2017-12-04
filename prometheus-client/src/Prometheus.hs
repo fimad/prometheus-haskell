@@ -38,7 +38,7 @@ module Prometheus (
 -- >>> replicateM_ 47 (incCounter myCounter)
 -- >>> getCounter myCounter
 -- 47.0
--- >>> void $ addCounter 10 myCounter
+-- >>> void $ addCounter myCounter 10
 -- >>> getCounter myCounter
 -- 57.0
 
@@ -56,9 +56,9 @@ module Prometheus (
 -- set the value of a gauge as well as add and subtract arbitrary values.
 --
 -- >>> myGauge <- register $ gauge (Info "my_gauge" "An example gauge")
--- >>> setGauge 100 myGauge
--- >>> addGauge 50 myGauge
--- >>> subGauge 25 myGauge
+-- >>> setGauge myGauge 100 
+-- >>> addGauge myGauge 50
+-- >>> subGauge myGauge 25
 -- >>> getGauge myGauge
 -- 125.0
 
@@ -94,7 +94,7 @@ module Prometheus (
 -- HTTP request latency.
 --
 -- >>> mySummary <- register $ summary (Info "my_summary" "") defaultQuantiles
--- >>> observe 0 mySummary
+-- >>> observe mySummary 0
 -- >>> getSummary mySummary
 -- [(1 % 2,0.0),(9 % 10,0.0),(99 % 100,0.0)]
 
@@ -112,7 +112,7 @@ module Prometheus (
 -- summaries in that they can be meaningfully aggregated across processes.
 --
 -- >>> myHistogram <- register $ histogram (Info "my_histogram" "") defaultBuckets
--- >>> observe 0 myHistogram
+-- >>> observe myHistogram 0 
 -- >>> getHistogram myHistogram
 -- fromList [(5.0e-3,1),(1.0e-2,0),(2.5e-2,0),(5.0e-2,0),(0.1,0),(0.25,0),(0.5,0),(1.0,0),(2.5,0),(5.0,0),(10.0,0)]
 ,   Histogram
@@ -128,11 +128,11 @@ module Prometheus (
 -- partitioned across a set of dimensions.
 --
 -- >>> myVector <- register $ vector ("method", "code") $ counter (Info "http_requests" "")
--- >>> withLabel ("GET", "200") incCounter myVector
--- >>> withLabel ("GET", "200") incCounter myVector
--- >>> withLabel ("GET", "404") incCounter myVector
--- >>> withLabel ("POST", "200") incCounter myVector
--- >>> getVectorWith getCounter myVector
+-- >>> withLabel myVector ("GET", "200") incCounter 
+-- >>> withLabel myVector ("GET", "200") incCounter 
+-- >>> withLabel myVector ("GET", "404") incCounter 
+-- >>> withLabel myVector ("POST", "200") incCounter 
+-- >>> getVectorWith myVector getCounter 
 -- [(("GET","200"),2.0),(("GET","404"),1.0),(("POST","200"),1.0)]
 -- >>> exportMetricsAsText >>= Data.ByteString.putStr
 -- # HELP http_requests

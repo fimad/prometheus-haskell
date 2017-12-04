@@ -23,12 +23,12 @@ spec = describe "Prometheus.Metric.Summary" $ do
     let windowSize = 10000
     it "computes quantiles correctly for [0,10000) in order" $ do
         m <- register $ summary (Info "name" "help") quantiles
-        mapM_ (`observe` m) [0..(windowSize - 1)]
+        mapM_ (m `observe`) [0..(windowSize - 1)]
         checkQuantiles m windowSize =<< getQuantiles quantiles m
     it "computes quantiles correctly for [0,10000) in random order" $ do
         m <- register $ summary (Info "name" "help") quantiles
         observations <- shuffleM [0..(windowSize - 1)]
-        mapM_ (`observe` m) observations
+        mapM_ (m `observe`) observations
         checkQuantiles m windowSize =<< getQuantiles quantiles m
     checkBadObservations badObservations1
     checkBadObservations badObservations2
@@ -39,7 +39,7 @@ spec = describe "Prometheus.Metric.Summary" $ do
         observations <- runIO $ shuffleM [0..(smallWindowSize - 1)]
         it ("computes quantiles correctly for " ++ show observations) $ do
             m <- register $ summary (Info "name" "help") quantiles
-            mapM_ (`observe` m) observations
+            mapM_ (m `observe`) observations
             checkQuantiles m smallWindowSize =<< getQuantiles quantiles m
     context "Maintains invariants" invariantTests
     where
@@ -47,7 +47,7 @@ spec = describe "Prometheus.Metric.Summary" $ do
         it ("computes quantiles correctly for " ++ show observations) $ do
             let windowSize = fromIntegral $ length observations
             m <- register $ summary (Info "name" "help") quantiles
-            mapM_ (`observe` m) observations
+            mapM_ (m `observe`) observations
             checkQuantiles m windowSize =<< getQuantiles quantiles m
 
 badObservations1 :: [Double]

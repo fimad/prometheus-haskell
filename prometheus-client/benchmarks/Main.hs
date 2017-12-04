@@ -53,10 +53,10 @@ benchIncCounter testCounter =
   bench "incCounter" $ whnfIO (incCounter testCounter)
 
 benchAddCounter testCounter =
-  bench "addCounter" $ whnfIO (addCounter 50 testCounter)
+  bench "addCounter" $ whnfIO (addCounter testCounter 50)
 
 benchAddDurationToCounter testCounter =
-  bench "addDurationToCounter" $ whnfIO (addDurationToCounter (return ()) testCounter)
+  bench "addDurationToCounter" $ whnfIO (addDurationToCounter testCounter $ return ())
 
 
 
@@ -76,13 +76,13 @@ benchIncGauge testGauge =
   bench "incGauge" $ whnfIO (incGauge testGauge)
 
 benchAddGauge testGauge =
-  bench "addGauge" $ whnfIO (addGauge 50 testGauge)
+  bench "addGauge" $ whnfIO (addGauge testGauge 50)
 
 benchSubGauge testGauge =
-  bench "subGauge" $ whnfIO (subGauge 50 testGauge)
+  bench "subGauge" $ whnfIO (subGauge testGauge 50)
 
 benchSetGaugeToDuration testGauge =
-  bench "setGaugeToDuration" $ whnfIO (setGaugeToDuration (return ()) testGauge)
+  bench "setGaugeToDuration" $ whnfIO (setGaugeToDuration testGauge $ return ())
 
 
 
@@ -100,7 +100,7 @@ benchSummaryWithQuantiles q =
       ]
 
 benchSummaryObserve s =
-  bench "observe" $ whnfIO (observe 42 s)
+  bench "observe" $ whnfIO (observe s 42)
 
 
 
@@ -118,7 +118,7 @@ benchHistogramWithQuantiles q =
       ]
 
 benchHistogramObserve s =
-  bench "observe" $ whnfIO (observe 42 s)
+  bench "observe" $ whnfIO (observe s 42)
 
 
 

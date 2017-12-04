@@ -40,13 +40,13 @@ withGauge (MkGauge ioref) f =
     doIO $ Atomics.atomicModifyIORefCAS_ ioref f
 
 -- | Adds a value to a gauge metric.
-addGauge :: MonadMonitor m => Double -> Gauge -> m ()
-addGauge x g = withGauge g add
+addGauge :: MonadMonitor m => Gauge -> Double -> m ()
+addGauge g x = withGauge g add
     where add i = i `seq` x `seq` i + x
 
 -- | Subtracts a value from a gauge metric.
-subGauge :: MonadMonitor m => Double -> Gauge -> m ()
-subGauge x g = withGauge g sub
+subGauge :: MonadMonitor m => Gauge -> Double -> m ()
+subGauge g x = withGauge g sub
     where sub i = i `seq` x `seq` i - x
 
 -- | Increments a gauge metric by 1.
@@ -58,8 +58,8 @@ decGauge :: MonadMonitor m => Gauge -> m ()
 decGauge g = withGauge g (+ (-1))
 
 -- | Sets a gauge metric to a specific value.
-setGauge :: MonadMonitor m => Double -> Gauge -> m ()
-setGauge r g = withGauge g set
+setGauge :: MonadMonitor m => Gauge -> Double -> m ()
+setGauge g r = withGauge g set
     where set _ = r
 
 -- | Retrieves the current value of a gauge metric.
@@ -67,10 +67,10 @@ getGauge :: MonadIO m => Gauge -> m Double
 getGauge (MkGauge ioref) = liftIO $ IORef.readIORef ioref
 
 -- | Sets a gauge metric to the duration in seconds of an IO action.
-setGaugeToDuration :: (MonadIO m, MonadMonitor m) => m a -> Gauge -> m a
-setGaugeToDuration io metric = do
+setGaugeToDuration :: (MonadIO m, MonadMonitor m) => Gauge -> m a -> m a
+setGaugeToDuration metric io = do
     (result, duration) <- timeAction io
-    setGauge duration metric
+    setGauge metric duration 
     return result
 
 collectGauge :: Info -> IORef.IORef Double -> IO [SampleGroup]

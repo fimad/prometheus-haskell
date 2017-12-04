@@ -14,16 +14,16 @@ import System.Clock (Clock(..), diffTimeSpec, getTime, toNanoSecs)
 class Observer metric where
     -- | Observe that a particular floating point value has occurred.
     -- For example, observe that this request took 0.23s.
-    observe :: MonadMonitor m => Double -> metric -> m ()
+    observe :: MonadMonitor m => metric -> Double -> m ()
 
 -- | Adds the duration in seconds of an IO action as an observation to an
 -- observer metric.
 --
 -- If the IO action throws an exception no duration will be observed.
-observeDuration :: (Observer metric, MonadIO m, MonadMonitor m) => m a -> metric -> m a
-observeDuration io metric = do
+observeDuration :: (Observer metric, MonadIO m, MonadMonitor m) => metric -> m a -> m a
+observeDuration metric io = do
     (result, duration) <- timeAction io
-    observe duration metric
+    observe metric duration 
     return result
 
 

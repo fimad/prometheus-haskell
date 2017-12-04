@@ -54,7 +54,7 @@ withSummary (MkSummary valueTVar) f =
 
 instance Observer Summary where
     -- | Adds a new observation to a summary metric.
-    observe v s = withSummary s (insert v)
+    observe s v = withSummary s (insert v)
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
 getSummary :: MonadIO m => Summary -> m [(Rational, Double)]

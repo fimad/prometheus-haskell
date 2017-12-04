@@ -21,7 +21,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ])
       it "renders gauges" $ do
             m <- register $ gauge (Info "test_gauge" "help string")
-            setGauge 47 m
+            setGauge m 47
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
                     "# HELP test_gauge help string"
@@ -30,9 +30,9 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ])
       it "renders summaries" $ do
             m <- register $ summary (Info "metric" "help") defaultQuantiles
-            observe 1 m
-            observe 1 m
-            observe 1 m
+            observe m 1
+            observe m 1
+            observe m 1
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
                     "# HELP metric help"
@@ -45,9 +45,9 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ])
       it "renders histograms" $ do
             m <- register $ histogram (Info "metric" "help") defaultBuckets
-            observe 1.0 m
-            observe 1.0 m
-            observe 1.0 m
+            observe m 1.0
+            observe m 1.0
+            observe m 1.0
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
                     "# HELP metric help"
@@ -70,7 +70,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
       it "renders vectors" $ do
             m <- register $ vector ("handler", "method")
                           $ counter (Info "test_counter" "help string")
-            withLabel ("root", "GET") incCounter m
+            withLabel m ("root", "GET") incCounter 
             result <- exportMetricsAsText
             result `shouldBe` BS.fromString (unlines [
                     "# HELP test_counter help string"

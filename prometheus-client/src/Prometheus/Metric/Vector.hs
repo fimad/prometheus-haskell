@@ -71,21 +71,21 @@ collectVector keys ioref = do
         extract [] = []
         extract (SampleGroup _ _ s:xs) = s ++ extract xs
 
-getVectorWith :: (metric -> IO a)
-              -> (Vector label metric)
+getVectorWith :: Vector label metric
+              -> (metric -> IO a)
               -> IO [(label, a)]
-getVectorWith f (MkVector valueTVar) = do
+getVectorWith (MkVector valueTVar) f = do
     (_, metricMap) <- IORef.readIORef valueTVar
     Map.assocs <$> forM metricMap (f . fst)
 
 -- | Given a label, applies an operation to the corresponding metric in the
 -- vector.
 withLabel :: (Label label, MonadMonitor m)
-          => label
+          => Vector label metric
+          -> label
           -> (metric -> IO ())
-          -> Vector label metric
           -> m ()
-withLabel label f (MkVector ioref) = doIO $ do
+withLabel (MkVector ioref) label f = doIO $ do
     (Metric gen, _) <- IORef.readIORef ioref
     newMetric <- gen
     metric <- Atomics.atomicModifyIORefCAS ioref $ \(_, metricMap) ->

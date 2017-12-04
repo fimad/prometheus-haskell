@@ -44,8 +44,8 @@ incCounter :: MonadMonitor m => Counter -> m ()
 incCounter c = withCounter c (+ 1)
 
 -- | Add the given value to the counter, if it is zero or more.
-addCounter :: MonadMonitor m => Double -> Counter -> m Bool
-addCounter x c
+addCounter :: MonadMonitor m => Counter -> Double -> m Bool
+addCounter c x
   | x < 0 = return False
   | otherwise = do
       withCounter c add
@@ -53,19 +53,19 @@ addCounter x c
   where add i = i `seq` x `seq` i + x
 
 -- | Add the given value to the counter. Panic if it is less than zero.
-unsafeAddCounter :: MonadMonitor m => Double -> Counter -> m ()
-unsafeAddCounter x c = do
-  added <- addCounter x c
+unsafeAddCounter :: MonadMonitor m => Counter -> Double -> m ()
+unsafeAddCounter c x = do
+  added <- addCounter c x
   unless added $
     error $ "Tried to add negative value to counter: " ++ show x
 
 -- | Add the duration of an IO action (in seconds) to a counter.
 --
 -- If the IO action throws, no duration is added.
-addDurationToCounter :: (MonadIO m, MonadMonitor m) => m a -> Counter -> m a
-addDurationToCounter io metric = do
+addDurationToCounter :: (MonadIO m, MonadMonitor m) => Counter -> m a -> m a
+addDurationToCounter metric io = do
     (result, duration) <- timeAction io
-    _ <- addCounter duration metric
+    _ <- addCounter metric duration 
     return result
 
 -- | Retrieves the current value of a counter metric.
