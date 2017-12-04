@@ -39,17 +39,14 @@ instance NFData Summary where
 -- | Creates a new summary metric with a given name, help string, and a list of
 -- quantiles. A reasonable set set of quantiles is provided by
 -- 'defaultQuantiles'.
-summary :: Info -> [Quantile] -> IO (Metric Summary)
-summary info quantiles = do
+summary :: Info -> [Quantile] -> Metric Summary
+summary info quantiles = Metric $ do
     valueTVar <- STM.newTVarIO (emptyEstimator quantiles)
-    return Metric {
-            handle = MkSummary valueTVar
-        ,   collect = collectSummary info valueTVar
-        }
+    return (MkSummary valueTVar, collectSummary info valueTVar)
 
 withSummary :: MonadMonitor m
-            => Metric Summary -> (Estimator -> Estimator) -> m ()
-withSummary (Metric {handle = MkSummary valueTVar}) f =
+            => Summary -> (Estimator -> Estimator) -> m ()
+withSummary (MkSummary valueTVar) f =
     doIO $ STM.atomically $ do
         STM.modifyTVar' valueTVar compress
         STM.modifyTVar' valueTVar f
@@ -59,8 +56,8 @@ instance Observer Summary where
     observe v s = withSummary s (insert v)
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
-getSummary :: Metric Summary -> IO [(Rational, Double)]
-getSummary (Metric {handle = MkSummary valueTVar}) = do
+getSummary :: Summary -> IO [(Rational, Double)]
+getSummary (MkSummary valueTVar) = do
     estimator <- STM.atomically $ do
         STM.modifyTVar' valueTVar compress
         STM.readTVar valueTVar
@@ -88,8 +85,8 @@ collectSummary info valueTVar = STM.atomically $ do
         toDouble :: Rational -> Double
         toDouble = fromRational
 
-dumpEstimator :: Metric Summary -> IO Estimator
-dumpEstimator (Metric {handle = MkSummary valueTVar}) =
+dumpEstimator :: Summary -> IO Estimator
+dumpEstimator (MkSummary valueTVar) =
     STM.atomically $ STM.readTVar valueTVar
 
 -- | A quantile is a pair of a quantile value and an associated acceptable error

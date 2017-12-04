@@ -5,7 +5,6 @@ module Prometheus.Metric.Observer (
 ) where
 
 import Data.Ratio ((%))
-import Prometheus.Metric
 import Prometheus.MonadMonitor
 
 import System.Clock (Clock(..), diffTimeSpec, getTime, toNanoSecs)
@@ -14,11 +13,11 @@ import System.Clock (Clock(..), diffTimeSpec, getTime, toNanoSecs)
 class Observer metric where
     -- | Observe that a particular floating point value has occurred.
     -- For example, observe that this request took 0.23s.
-    observe :: MonadMonitor m => Double -> Metric metric -> m ()
+    observe :: MonadMonitor m => Double -> metric -> m ()
 
 -- | Adds the duration in seconds of an IO action as an observation to an
 -- observer metric.
-observeDuration :: Observer metric => IO a -> Metric metric -> IO a
+observeDuration :: (Observer metric) => IO a -> metric -> IO a
 observeDuration io metric = do
     (result, duration) <- timeAction io
     observe duration metric

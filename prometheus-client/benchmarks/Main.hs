@@ -12,7 +12,7 @@ import System.Random
 
 withMetric m =
   envWithCleanup
-    (registerIO m)
+    (register m)
     (const unregisterAll)
 
 withCounter =
@@ -135,7 +135,7 @@ benchExportCounters nCounters =
   where
     benchmark = bench (show nCounters ++ " counters") (nfIO exportMetricsAsText)
     setup = replicateM_ nCounters $ do
-      registerIO $ counter (Info (show nCounters) "")
+      register $ counter (Info (show nCounters) "")
     teardown _ = unregisterAll
 
 benchExportHistograms nHistograms =
@@ -143,5 +143,5 @@ benchExportHistograms nHistograms =
   where
     benchmark = bench (show nHistograms ++ " histograms") (nfIO exportMetricsAsText)
     setup = replicateM_ nHistograms $ do
-      registerIO $ histogram (Info (show nHistograms) "") defaultBuckets
+      register $ histogram (Info (show nHistograms) "") defaultBuckets
     teardown _ = unregisterAll

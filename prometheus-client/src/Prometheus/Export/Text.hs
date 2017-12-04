@@ -23,7 +23,7 @@ import qualified Data.ByteString.UTF8 as BS
 -- <http://prometheus.io/docs/instrumenting/exposition_formats/ documentation>.
 --
 -- >>> :m +Data.ByteString
--- >>> myCounter <- registerIO $ counter (Info "my_counter" "Example counter")
+-- >>> myCounter <- register $ counter (Info "my_counter" "Example counter")
 -- >>> incCounter myCounter
 -- >>> exportMetricsAsText >>= Data.ByteString.putStr
 -- # HELP my_counter Example counter

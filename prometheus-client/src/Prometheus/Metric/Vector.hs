@@ -18,18 +18,15 @@ import qualified Data.IORef as IORef
 import qualified Data.Map.Strict as Map
 
 
-type VectorState l m = (IO (Metric m), Map.Map l (Metric m))
+type VectorState l m = (Metric m, Map.Map l (m, IO [SampleGroup]))
 
 data Vector l m = MkVector (IORef.IORef (VectorState l m))
 
 -- | Creates a new vector of metrics given a label.
-vector :: Label l => l -> IO (Metric m) -> IO (Metric (Vector l m))
-vector labels gen = do
+vector :: Label l => l -> Metric m -> Metric (Vector l m)
+vector labels gen = Metric $ do
     ioref <- checkLabelKeys labels $ IORef.newIORef (gen, Map.empty)
-    return Metric {
-            handle  = MkVector ioref
-        ,   collect = collectVector labels ioref
-        }
+    return (MkVector ioref, collectVector labels ioref)
 
 checkLabelKeys :: Label l => l -> a -> a
 checkLabelKeys keys r = foldl check r $ map fst $ labelPairs keys keys
@@ -59,8 +56,8 @@ collectVector keys ioref = do
     (_, metricMap) <- IORef.readIORef ioref
     joinSamples <$> concat <$> mapM collectInner (Map.assocs metricMap)
     where
-        collectInner (labels, metric) =
-            map (adjustSamples labels) <$> collect metric
+        collectInner (labels, (_metric, sampleGroups)) =
+            map (adjustSamples labels) <$> sampleGroups
 
         adjustSamples labels (SampleGroup info ty samples) =
             SampleGroup info ty (map (prependLabels labels) samples)
@@ -74,41 +71,41 @@ collectVector keys ioref = do
         extract [] = []
         extract (SampleGroup _ _ s:xs) = s ++ extract xs
 
-getVectorWith :: (Metric metric -> IO a)
-              -> Metric (Vector label metric)
+getVectorWith :: (metric -> IO a)
+              -> (Vector label metric)
               -> IO [(label, a)]
-getVectorWith f (Metric {handle = MkVector valueTVar}) = do
+getVectorWith f (MkVector valueTVar) = do
     (_, metricMap) <- IORef.readIORef valueTVar
-    Map.assocs <$> forM metricMap f
+    Map.assocs <$> forM metricMap (f . fst)
 
 -- | Given a label, applies an operation to the corresponding metric in the
 -- vector.
 withLabel :: (Label label, MonadMonitor m)
           => label
-          -> (Metric metric -> IO ())
-          -> Metric (Vector label metric)
+          -> (metric -> IO ())
+          -> Vector label metric
           -> m ()
-withLabel label f (Metric {handle = MkVector ioref}) = doIO $ do
-    (gen, _) <- IORef.readIORef ioref
+withLabel label f (MkVector ioref) = doIO $ do
+    (Metric gen, _) <- IORef.readIORef ioref
     newMetric <- gen
     metric <- Atomics.atomicModifyIORefCAS ioref $ \(_, metricMap) ->
         let maybeMetric = Map.lookup label metricMap
             updatedMap  = Map.insert label newMetric metricMap
         in  case maybeMetric of
-                Nothing     -> ((gen, updatedMap), newMetric)
-                Just metric -> ((gen, metricMap), metric)
-    f metric
+                Nothing     -> ((Metric gen, updatedMap), newMetric)
+                Just metric -> ((Metric gen, metricMap), metric)
+    f (fst metric)
 
 -- | Removes a label from a vector.
 removeLabel :: (Label label, MonadMonitor m)
-            => Metric (Vector label metric) -> label -> m ()
-removeLabel (Metric {handle = MkVector valueTVar}) label =
+            => Vector label metric -> label -> m ()
+removeLabel (MkVector valueTVar) label =
     doIO $ Atomics.atomicModifyIORefCAS_ valueTVar f
     where f (desc, metricMap) = (desc, Map.delete label metricMap)
 
 -- | Removes all labels from a vector.
 clearLabels :: (Label label, MonadMonitor m)
-            => Metric (Vector label metric) -> m ()
-clearLabels (Metric {handle = MkVector valueTVar}) =
+            => Vector label metric -> m ()
+clearLabels (MkVector valueTVar) =
     doIO $ Atomics.atomicModifyIORefCAS_ valueTVar f
     where f (desc, _) = (desc, Map.empty)

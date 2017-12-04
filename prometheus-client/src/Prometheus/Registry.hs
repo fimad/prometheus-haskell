@@ -11,6 +11,7 @@ module Prometheus.Registry (
 import Prometheus.Metric
 
 import Control.Applicative ((<$>))
+import Control.Monad.IO.Class
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Control.Concurrent.STM as STM
 
@@ -19,30 +20,28 @@ import qualified Control.Concurrent.STM as STM
 -- >>> :module +Prometheus
 -- >>> unregisterAll
 
-data RegisteredMetric = forall s. MkRegisteredMetric (Metric s)
-
-type Registry = [RegisteredMetric]
+type Registry = [IO [SampleGroup]]
 
 {-# NOINLINE globalRegistry #-}
 globalRegistry :: STM.TVar Registry
 globalRegistry = unsafePerformIO $ STM.newTVarIO []
 
--- | Registers a metric with the global metric registry.
-register :: Metric s -> IO (Metric s)
-register metric = do
-    let addToRegistry = (MkRegisteredMetric metric :)
-    STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
+register :: Metric s -> IO s
+register (Metric mk) = do
+    (metric, sampleGroups) <- mk
+    let addToRegistry = (sampleGroups :)
+    liftIO $ STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
     return metric
 
 -- | Registers a metric with the global metric registry.
-registerIO :: IO (Metric s) -> IO (Metric s)
+registerIO :: IO (Metric s) -> IO s
 registerIO metricGen = metricGen >>= register
 
 -- | Registers a metric with the global metric registry.
 --
 -- __IMPORTANT__: This method should only be used to register metrics as top
 -- level symbols, it should not be run from other pure code.
-unsafeRegister :: Metric s -> Metric s
+unsafeRegister :: Metric s -> s
 unsafeRegister = unsafePerformIO . register
 
 -- | Registers a metric with the global metric registry.
@@ -57,7 +56,7 @@ unsafeRegister = unsafePerformIO . register
 --  let c = unsafeRegisterIO $ counter (Info "my_counter" "An example metric")
 -- :}
 -- ...
-unsafeRegisterIO :: IO (Metric s) -> Metric s
+unsafeRegisterIO :: IO (Metric s) -> s
 unsafeRegisterIO = unsafePerformIO . registerIO
 
 -- | Removes all currently registered metrics from the registry.
@@ -73,7 +72,4 @@ unregisterAll = STM.atomically $ STM.writeTVar globalRegistry []
 collectMetrics :: IO [SampleGroup]
 collectMetrics = do
     registry <- STM.atomically $ STM.readTVar globalRegistry
-    concat <$> mapM collectRegistered registry
-
-collectRegistered :: RegisteredMetric -> IO [SampleGroup]
-collectRegistered (MkRegisteredMetric metric) = collect metric
+    concat <$> sequence registry

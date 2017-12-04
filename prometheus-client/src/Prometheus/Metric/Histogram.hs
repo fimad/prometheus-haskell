@@ -37,13 +37,10 @@ instance NFData Histogram where
 -- list of buckets. Panics if the list of buckets is not strictly increasing.
 -- A good default list of buckets is 'defaultBuckets'. You can also create
 -- buckets with 'linearBuckets' or 'exponentialBuckets'.
-histogram :: Info -> [Bucket] -> IO (Metric Histogram)
-histogram info buckets = do
+histogram :: Info -> [Bucket] -> Metric Histogram
+histogram info buckets = Metric $ do
   countsTVar <- STM.newTVarIO  (emptyCounts buckets)
-  return Metric {
-          handle = MkHistogram countsTVar
-      ,   collect = collectHistogram info countsTVar
-      }
+  return (MkHistogram countsTVar, collectHistogram info countsTVar)
 
 -- | Upper-bound for a histogram bucket.
 type Bucket = Double
@@ -73,15 +70,15 @@ instance Observer Histogram where
 
 -- | Transform the contents of a histogram.
 withHistogram :: MonadMonitor m
-              => Metric Histogram -> (BucketCounts -> BucketCounts) -> m ()
-withHistogram Metric {handle = MkHistogram bucketCounts} f =
+              => Histogram -> (BucketCounts -> BucketCounts) -> m ()
+withHistogram (MkHistogram bucketCounts) f =
   doIO $ STM.atomically $ STM.modifyTVar' bucketCounts f
 
 -- | Retries a map of upper bounds to counts of values observed that are
 -- less-than-or-equal-to that upper bound, but greater than any other upper
 -- bound in the map.
-getHistogram :: Metric Histogram -> IO (Map.Map Bucket Int)
-getHistogram Metric {handle = MkHistogram bucketsTVar} =
+getHistogram :: Histogram -> IO (Map.Map Bucket Int)
+getHistogram (MkHistogram bucketsTVar) =
     histCountsPerBucket <$> STM.atomically (STM.readTVar bucketsTVar)
 
 -- | Record an observation.

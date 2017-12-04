@@ -45,10 +45,7 @@ data SampleGroup = SampleGroup Info SampleType [Sample]
 -- of a handle value and a collect method. The handle value is typically a new
 -- type wrapped value that provides access to the internal state of the metric.
 -- The collect method samples the current value of the metric.
-data Metric s = Metric {
-        handle  :: s
-    ,   collect :: IO [SampleGroup]
-    }
+newtype Metric s = Metric { construct :: IO (s, IO [SampleGroup]) }
 
 instance NFData a => NFData (Metric a) where
-  rnf (Metric a b) = rnf a `seq` b `seq` ()
+  rnf (Metric a) = a `seq` ()

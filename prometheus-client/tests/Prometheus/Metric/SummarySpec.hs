@@ -6,7 +6,7 @@ module Prometheus.Metric.SummarySpec (
 ,   rankOf
 ) where
 
-import Prometheus hiding (collect)
+import Prometheus
 import Prometheus.Metric.Summary
 
 import Control.Applicative ((<$>))
@@ -22,11 +22,11 @@ spec :: Spec
 spec = describe "Prometheus.Metric.Summary" $ do
     let windowSize = 10000
     it "computes quantiles correctly for [0,10000) in order" $ do
-        m <- summary (Info "name" "help") quantiles
+        m <- register $ summary (Info "name" "help") quantiles
         mapM_ (`observe` m) [0..(windowSize - 1)]
         checkQuantiles m windowSize =<< getQuantiles quantiles m
     it "computes quantiles correctly for [0,10000) in random order" $ do
-        m <- summary (Info "name" "help") quantiles
+        m <- register $ summary (Info "name" "help") quantiles
         observations <- shuffleM [0..(windowSize - 1)]
         mapM_ (`observe` m) observations
         checkQuantiles m windowSize =<< getQuantiles quantiles m
@@ -38,7 +38,7 @@ spec = describe "Prometheus.Metric.Summary" $ do
     replicateM_ 50 $ do
         observations <- runIO $ shuffleM [0..(smallWindowSize - 1)]
         it ("computes quantiles correctly for " ++ show observations) $ do
-            m <- summary (Info "name" "help") quantiles
+            m <- register $ summary (Info "name" "help") quantiles
             mapM_ (`observe` m) observations
             checkQuantiles m smallWindowSize =<< getQuantiles quantiles m
     context "Maintains invariants" invariantTests
@@ -46,7 +46,7 @@ spec = describe "Prometheus.Metric.Summary" $ do
       checkBadObservations observations =
         it ("computes quantiles correctly for " ++ show observations) $ do
             let windowSize = fromIntegral $ length observations
-            m <- summary (Info "name" "help") quantiles
+            m <- register $ summary (Info "name" "help") quantiles
             mapM_ (`observe` m) observations
             checkQuantiles m windowSize =<< getQuantiles quantiles m
 
@@ -98,7 +98,7 @@ badObservations4 = [48.0, 64.0, 66.0, 53.0, 82.0, 76.0, 62.0, 10.0, 86.0, 8.0,
                    87.0, 78.0, 30.0, 40.0, 15.0, 18.0, 43.0, 29.0, 74.0, 14.0,
                    95.0, 46.0, 35.0, 12.0, 31.0, 99.0, 70.0, 41.0, 47.0, 92.0]
 
-checkQuantiles :: Metric Summary
+checkQuantiles :: Summary
                -> Double
                -> [(Rational, Rational, Double)] -> IO ()
 checkQuantiles m windowSize values = do
@@ -121,7 +121,7 @@ checkQuantiles m windowSize values = do
 quantiles :: [Quantile]
 quantiles = [(0.5, 0.05), (0.9, 0.01), (0.99, 0.001)]
 
-getQuantiles :: [Quantile] -> Metric Summary -> IO [(Rational, Rational, Double)]
+getQuantiles :: [Quantile] -> Summary -> IO [(Rational, Rational, Double)]
 getQuantiles qs s = do
     values <- sortQuantiles <$> getSummary s
     let sortedQuantiles = sortQuantiles qs
