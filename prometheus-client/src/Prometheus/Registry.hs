@@ -20,12 +20,15 @@ import qualified Control.Concurrent.STM as STM
 -- >>> :module +Prometheus
 -- >>> unregisterAll
 
+-- | A 'Registry' is a list of all registered metrics, currently represented by
+-- their sampling functions.
 type Registry = [IO [SampleGroup]]
 
 {-# NOINLINE globalRegistry #-}
 globalRegistry :: STM.TVar Registry
 globalRegistry = unsafePerformIO $ STM.newTVarIO []
 
+-- | Registers a metric with the global metric registry.
 register :: MonadIO m => Metric s -> m s
 register (Metric mk) = liftIO $ do
     (metric, sampleGroups) <- mk
