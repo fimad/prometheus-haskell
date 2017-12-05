@@ -46,7 +46,21 @@ data SampleGroup = SampleGroup Info SampleType [Sample]
 -- of a handle value and a collect method. The handle value is typically a new
 -- type wrapped value that provides access to the internal state of the metric.
 -- The collect method samples the current value of the metric.
-newtype Metric s = Metric { construct :: IO (s, IO [SampleGroup]) }
+newtype Metric s =
+  Metric
+    { -- | 'construct' is an 'IO' action that creates a new instance of a metric.
+      -- For example, in a counter, this 'IO' action would create a mutable reference
+      -- to maintain the state of the counter.
+      --
+      -- 'construct' returns two things:
+      --
+      -- 1. The state of the metric itself, which can be used to modify the
+      --    metric. A counter would return state pointing to the mutable
+      --    reference.
+      -- 2. An 'IO' action that samples the metric and returns 'SampleGroup's.
+      --    This is the data that will be stored by Prometheus. 
+      construct :: IO (s, IO [SampleGroup])
+    }
 
 instance NFData a => NFData (Metric a) where
   rnf (Metric a) = a `seq` ()
