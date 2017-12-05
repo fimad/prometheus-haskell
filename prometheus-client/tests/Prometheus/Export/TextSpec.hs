@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Export.TextSpec (
     spec
 ) where

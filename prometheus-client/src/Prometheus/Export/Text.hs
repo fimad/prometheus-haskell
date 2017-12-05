@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Export.Text (
     exportMetricsAsText
 ) where
@@ -8,13 +10,18 @@ import Prometheus.Metric
 import Prometheus.Registry
 
 import Control.Monad.IO.Class
-import Data.List (intersperse, intercalate)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BS
+import Data.List (intersperse)
+import Data.Monoid ((<>))
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 
 
 -- $setup
 -- >>> :module +Prometheus
+-- >>> :set -XOverloadedStrings
 -- >>> unregisterAll
 
 -- | Export all registered metrics in the Prometheus 0.0.4 text exposition
@@ -45,31 +52,30 @@ exportSampleGroup (SampleGroup info ty samples) =
         exportedSamples = exportSamples samples
         name = metricName info
         help = metricHelp info
-        prefix =  BS.fromString $ unlines [
-                "# HELP " ++ name ++ " " ++ escape help
-            ,   "# TYPE " ++ name ++ " " ++ show ty
+        prefix = T.encodeUtf8 $ T.unlines [
+                "# HELP " <> name <> " " <> T.concatMap escape help
+            ,   "# TYPE " <> name <> " " <> T.pack (show ty)
             ]
-        escape []        = []
-        escape ('\n':xs) = '\\' : 'n' : escape xs
-        escape ('\\':xs) = '\\' : '\\' : escape xs
-        escape (x:xs)    = x : escape xs
+        escape '\n' = "\\n"
+        escape '\\' = "\\\\"
+        escape other = T.pack [other]
 
 exportSamples :: [Sample] -> BS.ByteString
 exportSamples = BS.intercalate (BS.fromString "\n") . map exportSample
 
 exportSample :: Sample -> BS.ByteString
 exportSample (Sample name [] value) = BS.concat [
-        BS.fromString name, BS.fromString " ", value
+        T.encodeUtf8 name, BS.fromString " ", value
     ]
 exportSample (Sample name labels value) = BS.concat [
-        BS.fromString name
+        T.encodeUtf8 name
     ,   BS.fromString "{", exportLabels labels, BS.fromString "} "
     ,   value
     ]
 
 exportLabels :: LabelPairs -> BS.ByteString
-exportLabels labels = BS.fromString $ intercalate "," $ map exportLabel labels
+exportLabels labels = T.encodeUtf8 $ T.intercalate "," $ map exportLabel labels
 
-exportLabel :: (String, String) -> String
-exportLabel (key, value) = key ++ "=" ++ show value
+exportLabel :: (Text, Text) -> Text
+exportLabel (key, value) = key <> "=" <> T.pack (show value)
 

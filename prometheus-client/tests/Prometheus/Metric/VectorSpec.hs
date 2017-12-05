@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Metric.VectorSpec (
     spec
 ) where
@@ -5,6 +7,7 @@ module Prometheus.Metric.VectorSpec (
 import Prometheus
 
 import Control.Monad
+import qualified Data.Text as T
 import Test.Hspec
 
 spec :: Spec
@@ -23,4 +26,4 @@ spec = describe "Prometheus.Metric.Vector" $ do
             replicateM_ 47 $ withLabel m "foo" incCounter
             replicateM_ 42 $ withLabel m "bar" incCounter
             value <- getVectorWith m getCounter 
-            value `shouldMatchList` [("bar", 42), ("foo", 47)]
+            value `shouldMatchList` [(T.pack "bar", 42), (T.pack "foo", 47)]

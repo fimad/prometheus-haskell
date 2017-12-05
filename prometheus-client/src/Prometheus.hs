@@ -265,4 +265,5 @@ import Prometheus.Registry
 -- $setup
 -- >>> :module +Prometheus
 -- >>> :module +Control.Monad
+-- >>> :set -XOverloadedStrings
 -- >>> unregisterAll

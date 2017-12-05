@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Metric.CounterSpec (
     spec
 ) where

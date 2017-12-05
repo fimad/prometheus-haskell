@@ -3,30 +3,32 @@ module Prometheus.Info (
 ,   checkInfo
 ) where
 
+import Data.Text (Text)
+import qualified Data.Text as T
 
 -- | Meta data about a metric including its name and a help string that
 -- describes the value that the metric is measuring.
 data Info = Info {
-    metricName :: String
-,   metricHelp :: String
+    metricName :: Text
+,   metricHelp :: Text
 } deriving (Read, Show, Eq, Ord)
 
 checkInfo :: Info -> a -> a
 checkInfo info a
-    | (x:_)       <- name, not $ validStart x     = errorInvalid
-    | (_:xs)      <- name, not $ all validRest xs = errorInvalid
-    | ('_':'_':_) <- name                         = errorPrefix
-    | []          <- name                         = errorEmpty
+    | (x:_)       <- T.unpack name, not $ validStart x     = errorInvalid
+    | (_:xs)      <- T.unpack name, not $ all validRest xs = errorInvalid
+    | ('_':'_':_) <- T.unpack name                         = errorPrefix
+    | []          <- T.unpack name                         = errorEmpty
     | otherwise                                   = a
     where
         name = metricName info
 
         errorInvalid = error $ concat [
-                "The metric '", name, "' contains invalid characters."
+                "The metric '", T.unpack name, "' contains invalid characters."
             ]
 
         errorPrefix = error $ concat [
-                "The metric '", name, "' cannot start with '__'."
+                "The metric '", T.unpack name, "' cannot start with '__'."
             ]
 
         errorEmpty = error "Empty metric names are not allowed."

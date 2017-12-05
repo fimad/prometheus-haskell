@@ -46,6 +46,7 @@ library
     , transformers
     , utf8-string
     , exceptions
+    , text
   ghc-options: -Wall
 
 test-suite doctest
@@ -79,6 +80,7 @@ test-suite spec
     , utf8-string
     , deepseq
     , exceptions
+    , text
   ghc-options: -Wall
 
 benchmark bench
@@ -93,4 +95,5 @@ benchmark bench
     , prometheus-client
     , random
     , utf8-string
+    , text
   ghc-options: -Wall

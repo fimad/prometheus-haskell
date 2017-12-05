@@ -1,4 +1,5 @@
 {-# language GeneralizedNewtypeDeriving #-}
+{-# language OverloadedStrings #-}
 
 module Prometheus.Metric.Histogram (
     Histogram
@@ -25,6 +26,9 @@ import Control.DeepSeq
 import Control.Monad.IO.Class
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.Map.Strict as Map
+import Data.Monoid ((<>))
+import Data.Text (Text)
+import qualified Data.Text as T
 import Numeric (showFFloat)
 
 -- | A histogram. Counts the number of observations that fall within the
@@ -96,8 +100,8 @@ insert value BucketCounts { histTotal = total, histCount = count, histCountsPerB
 collectHistogram :: Info -> STM.TVar BucketCounts -> IO [SampleGroup]
 collectHistogram info bucketCounts = STM.atomically $ do
     BucketCounts total count counts <- STM.readTVar bucketCounts
-    let sumSample = Sample (name ++ "_sum") [] (bsShow total)
-    let countSample = Sample (name ++ "_count") [] (bsShow count)
+    let sumSample = Sample (name <> "_sum") [] (bsShow total)
+    let countSample = Sample (name <> "_count") [] (bsShow count)
     let infSample = Sample name [(bucketLabel, "+Inf")] (bsShow count)
     let samples = map toSample (cumulativeSum (Map.toAscList counts))
     return [SampleGroup info HistogramType $ samples ++ [infSample, sumSample, countSample]]
@@ -108,7 +112,7 @@ collectHistogram info bucketCounts = STM.atomically $ do
 
         -- We don't particularly want scientific notation, so force regular
         -- numeric representation instead.
-        formatFloat x = showFFloat Nothing x ""
+        formatFloat x = T.pack (showFFloat Nothing x "")
 
         cumulativeSum xs = zip (map fst xs) (scanl1 (+) (map snd xs))
 
@@ -117,7 +121,7 @@ collectHistogram info bucketCounts = STM.atomically $ do
 
 -- | The label that defines the upper bound of a bucket of a histogram. @"le"@
 -- is short for "less than or equal to".
-bucketLabel :: String
+bucketLabel :: Text
 bucketLabel = "le"
 
 -- | The default Histogram buckets. These are tailored to measure the response

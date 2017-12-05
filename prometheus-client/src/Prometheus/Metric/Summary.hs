@@ -1,4 +1,5 @@
 {-# language GeneralizedNewtypeDeriving #-}
+{-# language OverloadedStrings #-}
 
 module Prometheus.Metric.Summary (
     Summary
@@ -24,12 +25,14 @@ import Prometheus.Metric
 import Prometheus.Metric.Observer
 import Prometheus.MonadMonitor
 
+import qualified Control.Concurrent.STM as STM
 import Control.DeepSeq
 import Control.Monad.IO.Class
-import Data.Int (Int64)
-import Data.Foldable (foldr')
-import qualified Control.Concurrent.STM as STM
 import qualified Data.ByteString.UTF8 as BS
+import Data.Foldable (foldr')
+import Data.Int (Int64)
+import Data.Monoid ((<>))
+import qualified Data.Text as T
 
 
 newtype Summary = MkSummary (STM.TVar Estimator)
@@ -72,15 +75,15 @@ collectSummary info valueTVar = STM.atomically $ do
     estimator@(Estimator count itemSum _ _) <- STM.readTVar valueTVar
     let quantiles = map fst $ estQuantiles estimator
     let samples =  map (toSample estimator) quantiles
-    let sumSample = Sample (metricName info ++ "_sum") [] (bsShow itemSum)
-    let countSample = Sample (metricName info ++ "_count") [] (bsShow count)
+    let sumSample = Sample (metricName info <> "_sum") [] (bsShow itemSum)
+    let countSample = Sample (metricName info <> "_count") [] (bsShow count)
     return [SampleGroup info SummaryType $ samples ++ [sumSample, countSample]]
     where
         bsShow :: Show s => s -> BS.ByteString
         bsShow = BS.fromString . show
 
         toSample estimator q =
-            Sample (metricName info) [("quantile", show $ toDouble q)] $
+            Sample (metricName info) [("quantile", T.pack . show $ toDouble q)] $
                 bsShow $ query estimator q
 
         toDouble :: Rational -> Double

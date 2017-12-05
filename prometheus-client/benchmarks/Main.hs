@@ -1,4 +1,5 @@
 {-# language FlexibleContexts #-}
+{-# language OverloadedStrings #-}
 
 module Main (main) where
 
@@ -8,6 +9,7 @@ import Control.Monad
 import Criterion
 import Criterion.Main
 import Data.Foldable (for_)
+import qualified Data.Text as T
 import System.Random
 
 withMetric m =
@@ -135,7 +137,7 @@ benchExportCounters nCounters =
   where
     benchmark = bench (show nCounters ++ " counters") (nfIO exportMetricsAsText)
     setup = replicateM_ nCounters $ do
-      register $ counter (Info (show nCounters) "")
+      register $ counter (Info (T.pack $ show nCounters) "")
     teardown _ = unregisterAll
 
 benchExportHistograms nHistograms =
@@ -143,5 +145,5 @@ benchExportHistograms nHistograms =
   where
     benchmark = bench (show nHistograms ++ " histograms") (nfIO exportMetricsAsText)
     setup = replicateM_ nHistograms $ do
-      register $ histogram (Info (show nHistograms) "") defaultBuckets
+      register $ histogram (Info (T.pack $ show nHistograms) "") defaultBuckets
     teardown _ = unregisterAll

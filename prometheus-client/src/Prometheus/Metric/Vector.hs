@@ -12,10 +12,11 @@ import Prometheus.Metric
 import Prometheus.MonadMonitor
 
 import Control.Applicative ((<$>))
-import Data.Traversable (forM)
 import qualified Data.Atomics as Atomics
 import qualified Data.IORef as IORef
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as T
+import Data.Traversable (forM)
 
 
 type VectorState l m = (Metric m, Map.Map l (m, IO [SampleGroup]))
@@ -29,7 +30,7 @@ vector labels gen = Metric $ do
     return (MkVector ioref, collectVector labels ioref)
 
 checkLabelKeys :: Label l => l -> a -> a
-checkLabelKeys keys r = foldl check r $ map fst $ labelPairs keys keys
+checkLabelKeys keys r = foldl check r $ map (T.unpack . fst) $ labelPairs keys keys
     where
         check _ "instance" = error "The label 'instance' is reserved."
         check _ "job"      = error "The label 'job' is reserved."
