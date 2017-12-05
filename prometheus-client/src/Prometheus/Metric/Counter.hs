@@ -80,5 +80,22 @@ collectCounter info c = do
     let sample = Sample (metricName info) [] (BS.fromString $ show value)
     return [SampleGroup info CounterType [sample]]
 
+-- | Count the amount of times an action throws any synchronous exception.
+--
+-- >>> exceptions <- register $ counter (Info "exceptions_total" "Total amount of exceptions thrown")
+-- >>> countExceptions exceptions $ return ()
+-- >>> getCounter exceptions
+-- 0.0
+-- >>> countExceptions exceptions (error "Oh no!") `catch` (\SomeException{} -> return ())
+-- >>> getCounter exceptions
+-- 1.0
+--
+-- It's important to note that this will count *all* synchronous exceptions. If
+-- you want more granular counting of exceptions, you will need to write custom
+-- code using 'incCounter'.
 countExceptions :: (MonadCatch m, MonadMonitor m) => Counter -> m a -> m a
-countExceptions counter io = io `onException` incCounter counter
+countExceptions m io = io `onException` incCounter m
+
+-- $setup
+-- >>> :module +Prometheus
+-- >>> :set -XOverloadedStrings
