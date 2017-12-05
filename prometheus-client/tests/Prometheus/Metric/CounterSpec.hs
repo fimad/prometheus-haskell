@@ -4,6 +4,7 @@ module Prometheus.Metric.CounterSpec (
 
 import Prometheus
 
+import Control.Exception
 import Control.Monad
 import Test.Hspec
 
@@ -18,3 +19,9 @@ spec = describe "Prometheus.Metric.Counter" $ do
             replicateM_ 47 (incCounter m)
             value <- getCounter m
             value `shouldBe` 47
+      it "counts exceptions" $ do
+            m <- register $ counter (Info "name" "help")
+            replicateM_ 10 $ do
+              Left SomeException{} <- try $ countExceptions m $ error "Boom!"
+              return ()
+            getCounter m `shouldReturn` 10

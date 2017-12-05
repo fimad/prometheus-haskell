@@ -45,6 +45,7 @@ library
     , stm                >=2.3
     , transformers
     , utf8-string
+    , exceptions
   ghc-options: -Wall
 
 test-suite doctest
@@ -77,6 +78,7 @@ test-suite spec
     , transformers
     , utf8-string
     , deepseq
+    , exceptions
   ghc-options: -Wall
 
 benchmark bench

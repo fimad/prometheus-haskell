@@ -8,6 +8,7 @@ module Prometheus.Metric.Counter (
 ,   unsafeAddCounter
 ,   addDurationToCounter
 ,   getCounter
+,   countExceptions
 ) where
 
 import Prometheus.Info
@@ -16,6 +17,7 @@ import Prometheus.Metric.Observer (timeAction)
 import Prometheus.MonadMonitor
 
 import Control.DeepSeq
+import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad (unless)
 import qualified Data.Atomics as Atomics
@@ -77,3 +79,6 @@ collectCounter info c = do
     value <- IORef.readIORef c
     let sample = Sample (metricName info) [] (BS.fromString $ show value)
     return [SampleGroup info CounterType [sample]]
+
+countExceptions :: (MonadCatch m, MonadMonitor m) => Counter -> m a -> m a
+countExceptions counter io = io `onException` incCounter counter

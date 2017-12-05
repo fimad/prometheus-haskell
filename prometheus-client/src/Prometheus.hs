@@ -48,6 +48,7 @@ module Prometheus (
 ,   addCounter
 ,   unsafeAddCounter
 ,   addDurationToCounter
+,   countExceptions
 ,   getCounter
 
 -- ** Gauge
