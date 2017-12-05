@@ -2,6 +2,10 @@
 
 ## HEAD
 
+## 0.3.0
+
+- Change exported name of histogram metrics to have `_bucket` suffix.
+
 ## 0.2.0
 
 - Add the histogram metric type (#15).

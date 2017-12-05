@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bump the various hard coded scalpel version numbers.
+# Bump the various hard coded version numbers.
 
 set -e
 

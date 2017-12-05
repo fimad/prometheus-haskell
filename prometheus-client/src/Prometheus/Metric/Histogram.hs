@@ -102,12 +102,12 @@ collectHistogram info bucketCounts = STM.atomically $ do
     BucketCounts total count counts <- STM.readTVar bucketCounts
     let sumSample = Sample (name <> "_sum") [] (bsShow total)
     let countSample = Sample (name <> "_count") [] (bsShow count)
-    let infSample = Sample name [(bucketLabel, "+Inf")] (bsShow count)
+    let infSample = Sample (name <> "_bucket") [(bucketLabel, "+Inf")] (bsShow count)
     let samples = map toSample (cumulativeSum (Map.toAscList counts))
     return [SampleGroup info HistogramType $ samples ++ [infSample, sumSample, countSample]]
     where
         toSample (upperBound, count') =
-            Sample name [(bucketLabel, formatFloat upperBound)] $ bsShow count'
+            Sample (name <> "_bucket") [(bucketLabel, formatFloat upperBound)] $ bsShow count'
         name = metricName info
 
         -- We don't particularly want scientific notation, so force regular
