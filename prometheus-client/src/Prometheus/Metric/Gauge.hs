@@ -1,4 +1,3 @@
-{-# language GeneralizedNewtypeDeriving #-}
 module Prometheus.Metric.Gauge (
     Gauge
 ,   gauge
@@ -24,7 +23,9 @@ import qualified Data.IORef as IORef
 
 
 newtype Gauge = MkGauge (IORef.IORef Double)
-  deriving (NFData)
+
+instance NFData Gauge where
+  rnf (MkGauge ioref) = seq ioref ()
 
 -- | Create a new gauge metric with a given name and help string.
 gauge :: Info -> Metric Gauge

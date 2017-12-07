@@ -1,5 +1,3 @@
-{-# language GeneralizedNewtypeDeriving #-}
-
 module Prometheus.Metric.Counter (
     Counter
 ,   counter
@@ -26,7 +24,9 @@ import qualified Data.IORef as IORef
 
 
 newtype Counter = MkCounter (IORef.IORef Double)
-  deriving (NFData)
+
+instance NFData Counter where
+  rnf (MkCounter ioref) = seq ioref ()
 
 -- | Creates a new counter metric with a given name and help string.
 counter :: Info -> Metric Counter

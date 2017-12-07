@@ -1,4 +1,3 @@
-{-# language GeneralizedNewtypeDeriving #-}
 {-# language OverloadedStrings #-}
 
 module Prometheus.Metric.Summary (

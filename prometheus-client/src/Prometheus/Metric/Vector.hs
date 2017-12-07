@@ -12,6 +12,7 @@ import Prometheus.Metric
 import Prometheus.MonadMonitor
 
 import Control.Applicative ((<$>))
+import Control.DeepSeq
 import qualified Data.Atomics as Atomics
 import qualified Data.IORef as IORef
 import qualified Data.Map.Strict as Map
@@ -22,6 +23,9 @@ import Data.Traversable (forM)
 type VectorState l m = (Metric m, Map.Map l (m, IO [SampleGroup]))
 
 data Vector l m = MkVector (IORef.IORef (VectorState l m))
+
+instance NFData (Vector l m) where
+  rnf (MkVector ioref) = seq ioref ()
 
 -- | Creates a new vector of metrics given a label.
 vector :: Label l => l -> Metric m -> Metric (Vector l m)
