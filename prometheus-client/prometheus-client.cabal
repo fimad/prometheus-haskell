@@ -44,6 +44,7 @@ library
     , mtl                >=2
     , stm                >=2.3
     , transformers
+    , transformers-compat
     , utf8-string
     , exceptions
     , text
@@ -77,6 +78,7 @@ test-suite spec
     , random-shuffle
     , stm
     , transformers
+    , transformers-compat
     , utf8-string
     , deepseq
     , exceptions
