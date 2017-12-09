@@ -26,6 +26,7 @@ import qualified Control.Monad.Trans.State.Strict as S
 import qualified Control.Monad.Trans.Writer.Lazy as L
 import qualified Control.Monad.Trans.Writer.Strict as S
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
+import Data.Monoid (Monoid)
 
 
 -- | MonadMonitor describes a class of Monads that are capable of performing
