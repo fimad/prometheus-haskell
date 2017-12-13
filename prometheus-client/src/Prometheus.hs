@@ -135,7 +135,7 @@ module Prometheus (
 -- >>> withLabel myVector ("POST", "200") incCounter 
 -- >>> getVectorWith myVector getCounter 
 -- [(("GET","200"),2.0),(("GET","404"),1.0),(("POST","200"),1.0)]
--- >>> exportMetricsAsText >>= Data.ByteString.putStr
+-- >>> exportMetricsAsText >>= Data.ByteString.Lazy.putStr
 -- # HELP http_requests
 -- # TYPE http_requests counter
 -- http_requests{method="GET",code="200"} 2.0
@@ -204,7 +204,7 @@ module Prometheus (
 -- >>> let collectCPUTime = fmap toSampleGroup getCPUTime
 -- >>> let cpuTimeMetric = Metric (return (MkCPUTime (), collectCPUTime))
 -- >>> register cpuTimeMetric
--- >>> exportMetricsAsText >>= Data.ByteString.putStr
+-- >>> exportMetricsAsText >>= Data.ByteString.Lazy.putStr
 -- # HELP cpu_time The current CPU time
 -- # TYPE cpu_time gauge
 -- cpu_time ...

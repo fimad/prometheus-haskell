@@ -7,7 +7,8 @@ module Prometheus.Export.TextSpec (
 import Prometheus
 
 import Test.Hspec
-import qualified Data.ByteString.UTF8 as BS
+import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.Encoding as LT
 
 spec :: Spec
 spec = before_ unregisterAll $ after_ unregisterAll $
@@ -16,7 +17,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
             m <- register $ counter (Info "test_counter" "help string")
             incCounter m
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP test_counter help string"
                 ,   "# TYPE test_counter counter"
                 ,   "test_counter 1.0"
@@ -25,7 +26,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
             m <- register $ gauge (Info "test_gauge" "help string")
             setGauge m 47
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP test_gauge help string"
                 ,   "# TYPE test_gauge gauge"
                 ,   "test_gauge 47.0"
@@ -36,7 +37,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
             observe m 1
             observe m 1
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP metric help"
                 ,   "# TYPE metric summary"
                 ,   "metric{quantile=\"0.5\"} 1.0"
@@ -51,7 +52,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
             observe m 1.0
             observe m 1.0
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP metric help"
                 ,   "# TYPE metric histogram"
                 ,   "metric_bucket{le=\"0.005\"} 0"
@@ -74,7 +75,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                           $ counter (Info "test_counter" "help string")
             withLabel m ("root", "GET") incCounter 
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP test_counter help string"
                 ,   "# TYPE test_counter counter"
                 ,   "test_counter{handler=\"root\",method=\"GET\"} 1.0"
@@ -82,7 +83,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
       it "escapes newlines and slashes from help strings" $ do
             _ <- register $ counter (Info "metric" "help \n \\string")
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP metric help \\n \\\\string"
                 ,   "# TYPE metric counter"
                 ,   "metric 0.0"

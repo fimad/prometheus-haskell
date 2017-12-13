@@ -5,14 +5,12 @@ module Prometheus.Export.Text (
 ) where
 
 import Prometheus.Info
-import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.Registry
 
 import Control.Monad.IO.Class
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.UTF8 as BS
-import Data.List (intersperse)
+import qualified Data.ByteString.Builder as Build
+import qualified Data.ByteString.Lazy as BS
 import Data.Monoid ((<>))
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -33,26 +31,25 @@ import qualified Data.Text.Encoding as T
 -- >>> :m +Data.ByteString
 -- >>> myCounter <- register $ counter (Info "my_counter" "Example counter")
 -- >>> incCounter myCounter
--- >>> exportMetricsAsText >>= Data.ByteString.putStr
+-- >>> exportMetricsAsText >>= Data.ByteString.Lazy.putStr
 -- # HELP my_counter Example counter
 -- # TYPE my_counter counter
 -- my_counter 1.0
 exportMetricsAsText :: MonadIO m => m BS.ByteString
 exportMetricsAsText = do
     samples <- collectMetrics
-    let exportedSamples = map exportSampleGroup samples ++ [BS.empty]
-    return $ BS.concat $ intersperse (BS.fromString "\n") exportedSamples
+    return $ Build.toLazyByteString $ foldMap exportSampleGroup samples
 
-exportSampleGroup :: SampleGroup -> BS.ByteString
+exportSampleGroup :: SampleGroup -> Build.Builder
 exportSampleGroup (SampleGroup info ty samples) =
-    if BS.null exportedSamples
-        then BS.empty
-        else prefix `BS.append` exportedSamples
+    if null samples
+        then mempty
+        else prefix <> exportedSamples
     where
         exportedSamples = exportSamples samples
         name = metricName info
         help = metricHelp info
-        prefix = T.encodeUtf8 $ T.unlines [
+        prefix = Build.byteString $ T.encodeUtf8 $ T.unlines [
                 "# HELP " <> name <> " " <> T.concatMap escape help
             ,   "# TYPE " <> name <> " " <> T.pack (show ty)
             ]
@@ -60,22 +57,25 @@ exportSampleGroup (SampleGroup info ty samples) =
         escape '\\' = "\\\\"
         escape other = T.pack [other]
 
-exportSamples :: [Sample] -> BS.ByteString
-exportSamples = BS.intercalate (BS.fromString "\n") . map exportSample
+exportSamples :: [Sample] -> Build.Builder
+exportSamples samples =
+  mconcat [ exportSample s <> Build.charUtf8 '\n' | s <- samples ]
 
-exportSample :: Sample -> BS.ByteString
-exportSample (Sample name [] value) = BS.concat [
-        T.encodeUtf8 name, BS.fromString " ", value
-    ]
-exportSample (Sample name labels value) = BS.concat [
-        T.encodeUtf8 name
-    ,   BS.fromString "{", exportLabels labels, BS.fromString "} "
-    ,   value
-    ]
+exportSample :: Sample -> Build.Builder
+exportSample (Sample name labels value) =
+  Build.byteString (T.encodeUtf8 name)
+    <> (case labels of
+         [] -> mempty
+         l:ls ->
+           Build.charUtf8 '{'
+             <> exportLabel l
+             <> mconcat [ Build.charUtf8 ',' <> exportLabel l' | l' <- ls ]
+             <> Build.charUtf8 '}')
+    <> Build.charUtf8 ' '
+    <> Build.byteString value
 
-exportLabels :: LabelPairs -> BS.ByteString
-exportLabels labels = T.encodeUtf8 $ T.intercalate "," $ map exportLabel labels
-
-exportLabel :: (Text, Text) -> Text
-exportLabel (key, value) = key <> "=" <> T.pack (show value)
-
+exportLabel :: (Text, Text) -> Build.Builder
+exportLabel (key, value) =
+  Build.byteString (T.encodeUtf8 key)
+    <> Build.charUtf8 '='
+    <> Build.stringUtf8 (show value)
