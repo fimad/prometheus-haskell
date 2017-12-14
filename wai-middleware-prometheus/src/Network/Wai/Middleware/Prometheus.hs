@@ -116,6 +116,6 @@ respondWithMetrics :: (Wai.Response -> IO Wai.ResponseReceived)
                    -> IO Wai.ResponseReceived
 respondWithMetrics respond = do
     metrics <- Prom.exportMetricsAsText
-    respond $ Wai.responseBuilder HTTP.status200 headers $ BS.byteString metrics
+    respond $ Wai.responseLBS HTTP.status200 headers metrics
     where
         headers = [(HTTP.hContentType, "text/plain; version=0.0.4")]
