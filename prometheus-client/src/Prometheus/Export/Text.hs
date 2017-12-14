@@ -11,7 +11,7 @@ import Prometheus.Registry
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Builder as Build
 import qualified Data.ByteString.Lazy as BS
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mempty, mconcat)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
