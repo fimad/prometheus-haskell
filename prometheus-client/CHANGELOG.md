@@ -30,7 +30,7 @@ To adapt to this change, users should:
     This should change to
 
     ```haskell
-    httpRequests :: Metric Counter
+    httpRequests :: Counter
     httpRequests = unsafeRegister $ counter (Info ...)
     ```
 
