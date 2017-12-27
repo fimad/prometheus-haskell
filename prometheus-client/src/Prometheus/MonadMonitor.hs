@@ -33,7 +33,7 @@ import Data.Monoid (Monoid)
 -- asynchronous IO operations.
 class Monad m => MonadMonitor m where
     doIO :: IO () -> m ()
-    default doIO :: (MonadTrans t, MonadMonitor n, m ~ t n) => IO () -> t n ()
+    default doIO :: (MonadTrans t, MonadMonitor n, m ~ t n) => IO () -> m ()
     doIO = lift . doIO
 
 instance MonadMonitor IO where
