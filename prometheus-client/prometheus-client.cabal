@@ -40,10 +40,14 @@ library
     , bytestring         >=0.9
     , clock
     , containers
+    , deepseq
     , mtl                >=2
     , stm                >=2.3
     , transformers
+    , transformers-compat
     , utf8-string
+    , exceptions
+    , text
   ghc-options: -Wall
 
 test-suite doctest
@@ -74,7 +78,11 @@ test-suite spec
     , random-shuffle
     , stm
     , transformers
+    , transformers-compat
     , utf8-string
+    , deepseq
+    , exceptions
+    , text
   ghc-options: -Wall
 
 benchmark bench
@@ -85,8 +93,9 @@ benchmark bench
   build-depends:
       base               >=4.7 && <5
     , bytestring
-    , criterion          >=1.1
+    , criterion          >=1.2
     , prometheus-client
     , random
     , utf8-string
+    , text
   ghc-options: -Wall

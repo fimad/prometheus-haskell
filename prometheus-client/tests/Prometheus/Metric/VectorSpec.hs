@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Metric.VectorSpec (
     spec
 ) where
@@ -5,22 +7,23 @@ module Prometheus.Metric.VectorSpec (
 import Prometheus
 
 import Control.Monad
+import qualified Data.Text as T
 import Test.Hspec
 
 spec :: Spec
 spec = describe "Prometheus.Metric.Vector" $ do
       it "starts with no labels" $ do
-            m <- vector ("a", "b") $ counter (Info "name" "help")
-            value <- getVectorWith getCounter m
+            m <- register $ vector ("a", "b") $ counter (Info "name" "help")
+            value <- getVectorWith m getCounter
             value `shouldBe` []
       it "maintains state for a single label" $ do
-            m <- vector ("a", "b") $ counter (Info "name" "help")
-            replicateM_ 47 $ withLabel ("foo", "bar") incCounter m
-            value <- getVectorWith getCounter m
+            m <- register $ vector ("a", "b") $ counter (Info "name" "help")
+            replicateM_ 47 $ withLabel m ("foo", "bar") incCounter
+            value <- getVectorWith m getCounter
             value `shouldBe` [(("foo", "bar"), 47)]
       it "maintains state for multiple labels" $ do
-            m <- vector "a" $ counter (Info "name" "help")
-            replicateM_ 47 $ withLabel "foo" incCounter m
-            replicateM_ 42 $ withLabel "bar" incCounter m
-            value <- getVectorWith getCounter m
-            value `shouldMatchList` [("bar", 42), ("foo", 47)]
+            m <- register $ vector "a" $ counter (Info "name" "help")
+            replicateM_ 47 $ withLabel m "foo" incCounter
+            replicateM_ 42 $ withLabel m "bar" incCounter
+            value <- getVectorWith m getCounter 
+            value `shouldMatchList` [(T.pack "bar", 42), (T.pack "foo", 47)]

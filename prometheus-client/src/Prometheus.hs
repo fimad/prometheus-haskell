@@ -34,11 +34,11 @@ module Prometheus (
 -- A Counter is typically used to count requests served, tasks completed,
 -- errors occurred, etc.
 --
--- >>> myCounter <- counter (Info "my_counter" "An example counter")
+-- >>> myCounter <- register $ counter (Info "my_counter" "An example counter")
 -- >>> replicateM_ 47 (incCounter myCounter)
 -- >>> getCounter myCounter
 -- 47.0
--- >>> void $ addCounter 10 myCounter
+-- >>> void $ addCounter myCounter 10
 -- >>> getCounter myCounter
 -- 57.0
 
@@ -48,6 +48,7 @@ module Prometheus (
 ,   addCounter
 ,   unsafeAddCounter
 ,   addDurationToCounter
+,   countExceptions
 ,   getCounter
 
 -- ** Gauge
@@ -55,10 +56,10 @@ module Prometheus (
 -- | A gauge models an arbitrary floating point value. There are operations to
 -- set the value of a gauge as well as add and subtract arbitrary values.
 --
--- >>> myGauge <- gauge (Info "my_gauge" "An example gauge")
--- >>> setGauge 100 myGauge
--- >>> addGauge 50 myGauge
--- >>> subGauge 25 myGauge
+-- >>> myGauge <- register $ gauge (Info "my_gauge" "An example gauge")
+-- >>> setGauge myGauge 100 
+-- >>> addGauge myGauge 50
+-- >>> subGauge myGauge 25
 -- >>> getGauge myGauge
 -- 125.0
 
@@ -93,8 +94,8 @@ module Prometheus (
 -- sum, and rank estimations. A typical use case for summaries is measuring
 -- HTTP request latency.
 --
--- >>> mySummary <- summary (Info "my_summary" "") defaultQuantiles
--- >>> observe 0 mySummary
+-- >>> mySummary <- register $ summary (Info "my_summary" "") defaultQuantiles
+-- >>> observe mySummary 0
 -- >>> getSummary mySummary
 -- [(1 % 2,0.0),(9 % 10,0.0),(99 % 100,0.0)]
 
@@ -111,8 +112,8 @@ module Prometheus (
 -- for histograms is measuring HTTP request latency. Histograms are unlike
 -- summaries in that they can be meaningfully aggregated across processes.
 --
--- >>> myHistogram <- histogram (Info "my_histogram" "") defaultBuckets
--- >>> observe 0 myHistogram
+-- >>> myHistogram <- register $ histogram (Info "my_histogram" "") defaultBuckets
+-- >>> observe myHistogram 0 
 -- >>> getHistogram myHistogram
 -- fromList [(5.0e-3,1),(1.0e-2,0),(2.5e-2,0),(5.0e-2,0),(0.1,0),(0.25,0),(0.5,0),(1.0,0),(2.5,0),(5.0,0),(10.0,0)]
 ,   Histogram
@@ -127,15 +128,14 @@ module Prometheus (
 -- | A vector models a collection of metrics that share the same name but are
 -- partitioned across a set of dimensions.
 --
--- >>> myVector <- vector ("method", "code") $ counter (Info "http_requests" "")
--- >>> register myVector
--- >>> withLabel ("GET", "200") incCounter myVector
--- >>> withLabel ("GET", "200") incCounter myVector
--- >>> withLabel ("GET", "404") incCounter myVector
--- >>> withLabel ("POST", "200") incCounter myVector
--- >>> getVectorWith getCounter myVector
+-- >>> myVector <- register $ vector ("method", "code") $ counter (Info "http_requests" "")
+-- >>> withLabel myVector ("GET", "200") incCounter 
+-- >>> withLabel myVector ("GET", "200") incCounter 
+-- >>> withLabel myVector ("GET", "404") incCounter 
+-- >>> withLabel myVector ("POST", "200") incCounter 
+-- >>> getVectorWith myVector getCounter 
 -- [(("GET","200"),2.0),(("GET","404"),1.0),(("POST","200"),1.0)]
--- >>> exportMetricsAsText >>= Data.ByteString.putStr
+-- >>> exportMetricsAsText >>= Data.ByteString.Lazy.putStr
 -- # HELP http_requests
 -- # TYPE http_requests counter
 -- http_requests{method="GET",code="200"} 2.0
@@ -157,7 +157,7 @@ module Prometheus (
 -- specifying the types of vectors more concise.
 --
 -- >>> :{
--- >>> let myVector :: IO (Metric (Vector Label3 Counter));
+-- >>> let myVector :: Metric (Vector Label3 Counter);
 -- >>>     myVector = vector ("a", "b", "c") $ counter (Info "some_counter" "")
 -- >>> :}
 
@@ -202,9 +202,9 @@ module Prometheus (
 -- >>> let toSample = Sample "cpu_time" [] . toValue
 -- >>> let toSampleGroup = (:[]) . SampleGroup info GaugeType . (:[]) . toSample
 -- >>> let collectCPUTime = fmap toSampleGroup getCPUTime
--- >>> let cpuTimeMetric = Metric (MkCPUTime ()) collectCPUTime
+-- >>> let cpuTimeMetric = Metric (return (MkCPUTime (), collectCPUTime))
 -- >>> register cpuTimeMetric
--- >>> exportMetricsAsText >>= Data.ByteString.putStr
+-- >>> exportMetricsAsText >>= Data.ByteString.Lazy.putStr
 -- # HELP cpu_time The current CPU time
 -- # TYPE cpu_time gauge
 -- cpu_time ...
@@ -224,7 +224,7 @@ module Prometheus (
 -- Note that the changes to numAdds are not reflected until the updateMetrics
 -- value has been evaluated in the IO monad.
 --
--- >>> numAdds <- counter (Info "num_adds" "The number of additions")
+-- >>> numAdds <- register $ counter (Info "num_adds" "The number of additions")
 -- >>> let add x y = incCounter numAdds >> return (x + y)
 -- >>> let (3, updateMetrics) = runMonitor $ (add 1 1) >>= (add 1)
 -- >>> getCounter numAdds
@@ -265,4 +265,5 @@ import Prometheus.Registry
 -- $setup
 -- >>> :module +Prometheus
 -- >>> :module +Control.Monad
+-- >>> :set -XOverloadedStrings
 -- >>> unregisterAll

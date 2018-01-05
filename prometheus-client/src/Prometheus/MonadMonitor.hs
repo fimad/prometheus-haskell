@@ -1,4 +1,7 @@
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Prometheus.MonadMonitor (
     MonadMonitor (..)
 ,   Monitor
@@ -9,17 +12,44 @@ module Prometheus.MonadMonitor (
 
 import Control.Applicative (Applicative)
 import Control.Monad.Identity (Identity, runIdentity)
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.Class (MonadTrans)
+import Control.Monad.Trans.Error (ErrorT, Error)
+import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Trans.Identity (IdentityT)
+import Control.Monad.Trans.Maybe (MaybeT)
+import qualified Control.Monad.Trans.RWS.Lazy as L
+import qualified Control.Monad.Trans.RWS.Strict as S
+import Control.Monad.Trans.Reader (ReaderT)
+import qualified Control.Monad.Trans.State.Lazy as L
+import qualified Control.Monad.Trans.State.Strict as S
+import qualified Control.Monad.Trans.Writer.Lazy as L
+import qualified Control.Monad.Trans.Writer.Strict as S
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
+import Data.Monoid (Monoid)
 
 
 -- | MonadMonitor describes a class of Monads that are capable of performing
 -- asynchronous IO operations.
 class Monad m => MonadMonitor m where
     doIO :: IO () -> m ()
+    default doIO :: (MonadTrans t, MonadMonitor n, m ~ t n) => IO () -> m ()
+    doIO = lift . doIO
 
 instance MonadMonitor IO where
     doIO = id
+
+instance (Error e, MonadMonitor m) => MonadMonitor (ErrorT e m)
+instance (MonadMonitor m) => MonadMonitor (ExceptT e m)
+instance (MonadMonitor m) => MonadMonitor (IdentityT m)
+instance (MonadMonitor m) => MonadMonitor (MaybeT m)
+instance (MonadMonitor m, Monoid w) => MonadMonitor (L.RWST r w s m)
+instance (MonadMonitor m, Monoid w) => MonadMonitor (S.RWST r w s m) 
+instance (MonadMonitor m) => MonadMonitor (ReaderT r m)
+instance (MonadMonitor m) => MonadMonitor (L.StateT s m)
+instance (MonadMonitor m) => MonadMonitor (S.StateT s m) 
+instance (MonadMonitor m, Monoid w) => MonadMonitor (L.WriterT w m)
+instance (MonadMonitor m, Monoid w) => MonadMonitor (S.WriterT w m) 
 
 -- | Monitor allows the use of Prometheus metrics in pure code. When using
 -- Monitor, all of the metric operations will be collected and queued into

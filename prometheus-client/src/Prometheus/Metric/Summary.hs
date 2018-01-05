@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Metric.Summary (
     Summary
 ,   Quantile
@@ -22,39 +24,43 @@ import Prometheus.Metric
 import Prometheus.Metric.Observer
 import Prometheus.MonadMonitor
 
-import Data.Int (Int64)
-import Data.Foldable (foldr')
 import qualified Control.Concurrent.STM as STM
+import Control.DeepSeq
+import Control.Monad.IO.Class
 import qualified Data.ByteString.UTF8 as BS
+import Data.Foldable (foldr')
+import Data.Int (Int64)
+import Data.Monoid ((<>))
+import qualified Data.Text as T
 
 
 newtype Summary = MkSummary (STM.TVar Estimator)
 
+instance NFData Summary where
+  rnf (MkSummary a) = a `seq` ()
+
 -- | Creates a new summary metric with a given name, help string, and a list of
 -- quantiles. A reasonable set set of quantiles is provided by
 -- 'defaultQuantiles'.
-summary :: Info -> [Quantile] -> IO (Metric Summary)
-summary info quantiles = do
+summary :: Info -> [Quantile] -> Metric Summary
+summary info quantiles = Metric $ do
     valueTVar <- STM.newTVarIO (emptyEstimator quantiles)
-    return Metric {
-            handle = MkSummary valueTVar
-        ,   collect = collectSummary info valueTVar
-        }
+    return (MkSummary valueTVar, collectSummary info valueTVar)
 
 withSummary :: MonadMonitor m
-            => Metric Summary -> (Estimator -> Estimator) -> m ()
-withSummary (Metric {handle = MkSummary valueTVar}) f =
+            => Summary -> (Estimator -> Estimator) -> m ()
+withSummary (MkSummary valueTVar) f =
     doIO $ STM.atomically $ do
         STM.modifyTVar' valueTVar compress
         STM.modifyTVar' valueTVar f
 
 instance Observer Summary where
     -- | Adds a new observation to a summary metric.
-    observe v s = withSummary s (insert v)
+    observe s v = withSummary s (insert v)
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
-getSummary :: Metric Summary -> IO [(Rational, Double)]
-getSummary (Metric {handle = MkSummary valueTVar}) = do
+getSummary :: MonadIO m => Summary -> m [(Rational, Double)]
+getSummary (MkSummary valueTVar) = liftIO $ do
     estimator <- STM.atomically $ do
         STM.modifyTVar' valueTVar compress
         STM.readTVar valueTVar
@@ -68,22 +74,22 @@ collectSummary info valueTVar = STM.atomically $ do
     estimator@(Estimator count itemSum _ _) <- STM.readTVar valueTVar
     let quantiles = map fst $ estQuantiles estimator
     let samples =  map (toSample estimator) quantiles
-    let sumSample = Sample (metricName info ++ "_sum") [] (bsShow itemSum)
-    let countSample = Sample (metricName info ++ "_count") [] (bsShow count)
+    let sumSample = Sample (metricName info <> "_sum") [] (bsShow itemSum)
+    let countSample = Sample (metricName info <> "_count") [] (bsShow count)
     return [SampleGroup info SummaryType $ samples ++ [sumSample, countSample]]
     where
         bsShow :: Show s => s -> BS.ByteString
         bsShow = BS.fromString . show
 
         toSample estimator q =
-            Sample (metricName info) [("quantile", show $ toDouble q)] $
+            Sample (metricName info) [("quantile", T.pack . show $ toDouble q)] $
                 bsShow $ query estimator q
 
         toDouble :: Rational -> Double
         toDouble = fromRational
 
-dumpEstimator :: Metric Summary -> IO Estimator
-dumpEstimator (Metric {handle = MkSummary valueTVar}) =
+dumpEstimator :: Summary -> IO Estimator
+dumpEstimator (MkSummary valueTVar) =
     STM.atomically $ STM.readTVar valueTVar
 
 -- | A quantile is a pair of a quantile value and an associated acceptable error

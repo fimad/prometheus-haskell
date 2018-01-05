@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 -- | This module defines a metrics that exposes statistics from the GHC runtime
 -- system ("GHC.Conc", "GHC.Stats").
 --
@@ -12,19 +14,17 @@ module Prometheus.Metric.GHC (
 ) where
 
 import Control.Applicative ((<$>))
+import qualified Data.ByteString.UTF8 as BS
+import Data.Text (Text)
 import GHC.Conc (numSparks, getNumCapabilities)
 import GHC.Stats
 import Prometheus
-import qualified Data.ByteString.UTF8 as BS
 
 
-newtype GHCMetrics = GHCMetrics ()
+data GHCMetrics = GHCMetrics
 
 ghcMetrics :: Metric GHCMetrics
-ghcMetrics = Metric {
-        handle  = GHCMetrics ()
-    ,   collect = concat <$> sequence ghcCollectors
-    }
+ghcMetrics = Metric (return (GHCMetrics, concat <$> sequence ghcCollectors))
 
 ghcCollectors :: [IO [SampleGroup]]
 ghcCollectors = [
@@ -115,27 +115,25 @@ ghcCollectors = [
             wallSeconds
     ,   statsCollector
             "ghc_parallel_copied_bytes_total"
-            ("Number of bytes copied during GC, minus space held by mutable "
-                ++ "lists held by the capabilities.")
+            "Number of bytes copied during GC, minus space held by mutable lists held by the capabilities."
             CounterType
             parTotBytesCopied
     ,   statsCollector
             "ghc_parallel_max_copied_bytes_total"
-            ("Sum of number of bytes copied each GC by the most active GC "
-                ++ "thread each GC.")
+            "Sum of number of bytes copied each GC by the most active GC thread each GC."
             CounterType
             parMaxBytesCopied
     ]
 
 statsCollector :: Show a
-               => String -> String -> SampleType -> (GCStats -> a) -> IO [SampleGroup]
+               => Text -> Text -> SampleType -> (GCStats -> a) -> IO [SampleGroup]
 statsCollector name help sampleType stat = do
     statsEnabled <- getGCStatsEnabled
     if statsEnabled
         then showCollector name help sampleType (stat <$> getGCStats)
         else return []
 
-showCollector :: Show a => String -> String -> SampleType -> IO a -> IO [SampleGroup]
+showCollector :: Show a => Text -> Text -> SampleType -> IO a -> IO [SampleGroup]
 showCollector name help sampleType ioInt = do
     value <- ioInt
     let info = Info name help

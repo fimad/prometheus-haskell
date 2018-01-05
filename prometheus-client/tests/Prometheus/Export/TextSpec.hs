@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Export.TextSpec (
     spec
 ) where
@@ -5,36 +7,37 @@ module Prometheus.Export.TextSpec (
 import Prometheus
 
 import Test.Hspec
-import qualified Data.ByteString.UTF8 as BS
+import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.Encoding as LT
 
 spec :: Spec
 spec = before_ unregisterAll $ after_ unregisterAll $
   describe "Prometheus.Export.Text.exportMetricsAsText" $ do
       it "renders counters" $ do
-            m <- registerIO $ counter (Info "test_counter" "help string")
+            m <- register $ counter (Info "test_counter" "help string")
             incCounter m
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP test_counter help string"
                 ,   "# TYPE test_counter counter"
                 ,   "test_counter 1.0"
                 ])
       it "renders gauges" $ do
-            m <- registerIO $ gauge (Info "test_gauge" "help string")
-            setGauge 47 m
+            m <- register $ gauge (Info "test_gauge" "help string")
+            setGauge m 47
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP test_gauge help string"
                 ,   "# TYPE test_gauge gauge"
                 ,   "test_gauge 47.0"
                 ])
       it "renders summaries" $ do
-            m <- registerIO $ summary (Info "metric" "help") defaultQuantiles
-            observe 1 m
-            observe 1 m
-            observe 1 m
+            m <- register $ summary (Info "metric" "help") defaultQuantiles
+            observe m 1
+            observe m 1
+            observe m 1
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP metric help"
                 ,   "# TYPE metric summary"
                 ,   "metric{quantile=\"0.5\"} 1.0"
@@ -44,12 +47,12 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "metric_count 3"
                 ])
       it "renders histograms" $ do
-            m <- registerIO $ histogram (Info "metric" "help") defaultBuckets
-            observe 1.0 m
-            observe 1.0 m
-            observe 1.0 m
+            m <- register $ histogram (Info "metric" "help") defaultBuckets
+            observe m 1.0
+            observe m 1.0
+            observe m 1.0
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP metric help"
                 ,   "# TYPE metric histogram"
                 ,   "metric_bucket{le=\"0.005\"} 0"
@@ -68,19 +71,19 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "metric_count 3"
                 ])
       it "renders vectors" $ do
-            m <- registerIO $ vector ("handler", "method")
-                            $ counter (Info "test_counter" "help string")
-            withLabel ("root", "GET") incCounter m
+            m <- register $ vector ("handler", "method")
+                          $ counter (Info "test_counter" "help string")
+            withLabel m ("root", "GET") incCounter 
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP test_counter help string"
                 ,   "# TYPE test_counter counter"
                 ,   "test_counter{handler=\"root\",method=\"GET\"} 1.0"
                 ])
       it "escapes newlines and slashes from help strings" $ do
-            _ <- registerIO $ counter (Info "metric" "help \n \\string")
+            _ <- register $ counter (Info "metric" "help \n \\string")
             result <- exportMetricsAsText
-            result `shouldBe` BS.fromString (unlines [
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
                     "# HELP metric help \\n \\\\string"
                 ,   "# TYPE metric counter"
                 ,   "metric 0.0"

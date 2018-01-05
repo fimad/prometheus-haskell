@@ -12,11 +12,12 @@ module Network.Wai.Middleware.Prometheus (
 ) where
 
 import qualified Data.ByteString.Builder as BS
-import qualified Data.ByteString.Char8 as BS
 import qualified Data.Default as Default
 import Data.Maybe (fromMaybe)
 import Data.Ratio ((%))
+import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Text.Encoding (decodeUtf8)
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.Wai as Wai
 import qualified Prometheus as Prom
@@ -47,9 +48,9 @@ instance Default.Default PrometheusSettings where
     }
 
 {-# NOINLINE requestLatency #-}
-requestLatency :: Prom.Metric (Prom.Vector Prom.Label3 Prom.Histogram)
-requestLatency = Prom.unsafeRegisterIO $ Prom.vector ("handler", "method", "status_code")
-                                       $ Prom.histogram info Prom.defaultBuckets
+requestLatency :: Prom.Vector Prom.Label3 Prom.Histogram
+requestLatency = Prom.unsafeRegister $ Prom.vector ("handler", "method", "status_code")
+                                     $ Prom.histogram info Prom.defaultBuckets
     where info = Prom.Info "http_request_duration_seconds"
                            "The HTTP request latencies in seconds."
 
@@ -58,15 +59,15 @@ requestLatency = Prom.unsafeRegisterIO $ Prom.vector ("handler", "method", "stat
 -- If you use this function you will likely want to override the default value
 -- of 'prometheusInstrumentApp' to be false so that your app does not get double
 -- instrumented.
-instrumentApp :: String           -- ^ The label used to identify this app
+instrumentApp :: Text             -- ^ The label used to identify this app
               -> Wai.Application  -- ^ The app to instrument
               -> Wai.Application  -- ^ The instrumented app
 instrumentApp handler app req respond = do
     start <- getTime Monotonic
     app req $ \res -> do
         end <- getTime Monotonic
-        let method = Just $ BS.unpack (Wai.requestMethod req)
-        let status = Just $ show (HTTP.statusCode (Wai.responseStatus res))
+        let method = Just $ decodeUtf8 (Wai.requestMethod req)
+        let status = Just $ T.pack (show (HTTP.statusCode (Wai.responseStatus res)))
         observeSeconds handler method status start end
         respond res
 
@@ -77,7 +78,7 @@ instrumentApp handler app req respond = do
 -- If you use this function you will likely want to override the default value
 -- of 'prometheusInstrumentApp' to be false so that your app does not get double
 -- instrumented.
-instrumentIO :: String  -- ^ The label used to identify this IO operation
+instrumentIO :: Text    -- ^ The label used to identify this IO operation
              -> IO a    -- ^ The IO action to instrument
              -> IO a    -- ^ The instrumented app
 instrumentIO label io = do
@@ -87,12 +88,12 @@ instrumentIO label io = do
     observeSeconds label Nothing Nothing start end
     return result
 
-observeSeconds :: String -> Maybe String -> Maybe String -> TimeSpec -> TimeSpec -> IO ()
+observeSeconds :: Text -> Maybe Text -> Maybe Text -> TimeSpec -> TimeSpec -> IO ()
 observeSeconds handler method status start end = do
     let latency = fromRational $ toRational (toNanoSecs (end `diffTimeSpec` start) % 1000000000)
-    Prom.withLabel (handler, fromMaybe "" method, fromMaybe "" status)
-                   (Prom.observe latency)
-                   requestLatency
+    Prom.withLabel requestLatency
+                   (handler, fromMaybe "" method, fromMaybe "" status)
+                   (flip Prom.observe latency)
 
 -- | Expose Prometheus metrics and instrument an application with some basic
 -- metrics (e.g. request latency).
@@ -115,6 +116,6 @@ respondWithMetrics :: (Wai.Response -> IO Wai.ResponseReceived)
                    -> IO Wai.ResponseReceived
 respondWithMetrics respond = do
     metrics <- Prom.exportMetricsAsText
-    respond $ Wai.responseBuilder HTTP.status200 headers $ BS.byteString metrics
+    respond $ Wai.responseLBS HTTP.status200 headers metrics
     where
         headers = [(HTTP.hContentType, "text/plain; version=0.0.4")]

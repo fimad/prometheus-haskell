@@ -27,6 +27,7 @@ library
       base               >=4.7 && <5
     , prometheus-client
     , utf8-string        >=0.3
+    , text
   ghc-options: -Wall
 
 test-suite doctest

@@ -17,8 +17,8 @@ import qualified Prometheus.Metric.GHC as P
 
 
 {-# NOINLINE pageVisits #-}
-pageVisits :: P.Metric P.Counter
-pageVisits = P.unsafeRegisterIO
+pageVisits :: P.Counter
+pageVisits = P.unsafeRegister
            $ P.counter
            -- Each metric provided by the base library takes an Info value that
            -- gives the name of the metric and a help string that describes the
@@ -26,8 +26,8 @@ pageVisits = P.unsafeRegisterIO
            $ P.Info "page_visits" "The number of visits to the index page."
 
 {-# NOINLINE votes #-}
-votes :: P.Metric (P.Vector P.Label1 P.Counter)
-votes = P.unsafeRegisterIO
+votes :: P.Vector P.Label1 P.Counter
+votes = P.unsafeRegister
       -- Declare a vector of counters with a single dimension: "vote".
       $ P.vector "vote"
       $ P.counter
@@ -75,15 +75,15 @@ doIndex = do
 
 doRed :: IO Wai.Response
 doRed = do
-    P.withLabel "red" P.incCounter votes
+    P.withLabel votes "red" P.incCounter
     return $ mkResponse "Red is alright I guess. <a href='/'>back</a>"
 
 doBlue :: IO Wai.Response
 doBlue = do
-    P.withLabel "blue" P.incCounter votes
+    P.withLabel votes "blue" P.incCounter
     return $ mkResponse "Blue is whatever. <a href='/'>back</a>"
 
 doGreen :: IO Wai.Response
 doGreen = do
-    P.withLabel "green" P.incCounter votes
+    P.withLabel votes "green" P.incCounter
     return $ mkResponse "Green's ok. <a href='/'>back</a>"

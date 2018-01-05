@@ -1,19 +1,26 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Export.Text (
     exportMetricsAsText
 ) where
 
 import Prometheus.Info
-import Prometheus.Label
 import Prometheus.Metric
 import Prometheus.Registry
 
-import Data.List (intersperse, intercalate)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.UTF8 as BS
+import Control.Monad.IO.Class
+import qualified Data.ByteString.Builder as Build
+import qualified Data.ByteString.Lazy as BS
+import Data.Foldable (foldMap)
+import Data.Monoid ((<>), mempty, mconcat)
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 
 
 -- $setup
 -- >>> :module +Prometheus
+-- >>> :set -XOverloadedStrings
 -- >>> unregisterAll
 
 -- | Export all registered metrics in the Prometheus 0.0.4 text exposition
@@ -23,52 +30,53 @@ import qualified Data.ByteString.UTF8 as BS
 -- <http://prometheus.io/docs/instrumenting/exposition_formats/ documentation>.
 --
 -- >>> :m +Data.ByteString
--- >>> myCounter <- registerIO $ counter (Info "my_counter" "Example counter")
+-- >>> myCounter <- register $ counter (Info "my_counter" "Example counter")
 -- >>> incCounter myCounter
--- >>> exportMetricsAsText >>= Data.ByteString.putStr
+-- >>> exportMetricsAsText >>= Data.ByteString.Lazy.putStr
 -- # HELP my_counter Example counter
 -- # TYPE my_counter counter
 -- my_counter 1.0
-exportMetricsAsText :: IO BS.ByteString
+exportMetricsAsText :: MonadIO m => m BS.ByteString
 exportMetricsAsText = do
     samples <- collectMetrics
-    let exportedSamples = map exportSampleGroup samples ++ [BS.empty]
-    return $ BS.concat $ intersperse (BS.fromString "\n") exportedSamples
+    return $ Build.toLazyByteString $ foldMap exportSampleGroup samples
 
-exportSampleGroup :: SampleGroup -> BS.ByteString
+exportSampleGroup :: SampleGroup -> Build.Builder
 exportSampleGroup (SampleGroup info ty samples) =
-    if BS.null exportedSamples
-        then BS.empty
-        else prefix `BS.append` exportedSamples
+    if null samples
+        then mempty
+        else prefix <> exportedSamples
     where
         exportedSamples = exportSamples samples
         name = metricName info
         help = metricHelp info
-        prefix =  BS.fromString $ unlines [
-                "# HELP " ++ name ++ " " ++ escape help
-            ,   "# TYPE " ++ name ++ " " ++ show ty
+        prefix = Build.byteString $ T.encodeUtf8 $ T.unlines [
+                "# HELP " <> name <> " " <> T.concatMap escape help
+            ,   "# TYPE " <> name <> " " <> T.pack (show ty)
             ]
-        escape []        = []
-        escape ('\n':xs) = '\\' : 'n' : escape xs
-        escape ('\\':xs) = '\\' : '\\' : escape xs
-        escape (x:xs)    = x : escape xs
+        escape '\n' = "\\n"
+        escape '\\' = "\\\\"
+        escape other = T.pack [other]
 
-exportSamples :: [Sample] -> BS.ByteString
-exportSamples = BS.intercalate (BS.fromString "\n") . map exportSample
+exportSamples :: [Sample] -> Build.Builder
+exportSamples samples =
+  mconcat [ exportSample s <> Build.charUtf8 '\n' | s <- samples ]
 
-exportSample :: Sample -> BS.ByteString
-exportSample (Sample name [] value) = BS.concat [
-        BS.fromString name, BS.fromString " ", value
-    ]
-exportSample (Sample name labels value) = BS.concat [
-        BS.fromString name
-    ,   BS.fromString "{", exportLabels labels, BS.fromString "} "
-    ,   value
-    ]
+exportSample :: Sample -> Build.Builder
+exportSample (Sample name labels value) =
+  Build.byteString (T.encodeUtf8 name)
+    <> (case labels of
+         [] -> mempty
+         l:ls ->
+           Build.charUtf8 '{'
+             <> exportLabel l
+             <> mconcat [ Build.charUtf8 ',' <> exportLabel l' | l' <- ls ]
+             <> Build.charUtf8 '}')
+    <> Build.charUtf8 ' '
+    <> Build.byteString value
 
-exportLabels :: LabelPairs -> BS.ByteString
-exportLabels labels = BS.fromString $ intercalate "," $ map exportLabel labels
-
-exportLabel :: (String, String) -> String
-exportLabel (key, value) = key ++ "=" ++ show value
-
+exportLabel :: (Text, Text) -> Build.Builder
+exportLabel (key, value) =
+  Build.byteString (T.encodeUtf8 key)
+    <> Build.charUtf8 '='
+    <> Build.stringUtf8 (show value)

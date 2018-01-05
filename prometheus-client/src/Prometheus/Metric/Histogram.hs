@@ -1,3 +1,5 @@
+{-# language OverloadedStrings #-}
+
 module Prometheus.Metric.Histogram (
     Histogram
 ,   histogram
@@ -19,25 +21,30 @@ import Prometheus.MonadMonitor
 
 import Control.Applicative ((<$>))
 import qualified Control.Concurrent.STM as STM
+import Control.DeepSeq
+import Control.Monad.IO.Class
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.Map.Strict as Map
+import Data.Monoid ((<>))
+import Data.Text (Text)
+import qualified Data.Text as T
 import Numeric (showFFloat)
 
 -- | A histogram. Counts the number of observations that fall within the
 -- specified buckets.
 newtype Histogram = MkHistogram (STM.TVar BucketCounts)
 
+instance NFData Histogram where
+  rnf (MkHistogram a) = seq a ()
+
 -- | Create a new 'Histogram' metric with a given name, help string, and
 -- list of buckets. Panics if the list of buckets is not strictly increasing.
 -- A good default list of buckets is 'defaultBuckets'. You can also create
 -- buckets with 'linearBuckets' or 'exponentialBuckets'.
-histogram :: Info -> [Bucket] -> IO (Metric Histogram)
-histogram info buckets = do
+histogram :: Info -> [Bucket] -> Metric Histogram
+histogram info buckets = Metric $ do
   countsTVar <- STM.newTVarIO  (emptyCounts buckets)
-  return Metric {
-          handle = MkHistogram countsTVar
-      ,   collect = collectHistogram info countsTVar
-      }
+  return (MkHistogram countsTVar, collectHistogram info countsTVar)
 
 -- | Upper-bound for a histogram bucket.
 type Bucket = Double
@@ -63,20 +70,20 @@ emptyCounts buckets
 
 instance Observer Histogram where
     -- | Add a new observation to a histogram metric.
-    observe v h = withHistogram h (insert v)
+    observe h v = withHistogram h (insert v)
 
 -- | Transform the contents of a histogram.
 withHistogram :: MonadMonitor m
-              => Metric Histogram -> (BucketCounts -> BucketCounts) -> m ()
-withHistogram Metric {handle = MkHistogram bucketCounts} f =
+              => Histogram -> (BucketCounts -> BucketCounts) -> m ()
+withHistogram (MkHistogram bucketCounts) f =
   doIO $ STM.atomically $ STM.modifyTVar' bucketCounts f
 
 -- | Retries a map of upper bounds to counts of values observed that are
 -- less-than-or-equal-to that upper bound, but greater than any other upper
 -- bound in the map.
-getHistogram :: Metric Histogram -> IO (Map.Map Bucket Int)
-getHistogram Metric {handle = MkHistogram bucketsTVar} =
-    histCountsPerBucket <$> STM.atomically (STM.readTVar bucketsTVar)
+getHistogram :: MonadIO m => Histogram -> m (Map.Map Bucket Int)
+getHistogram (MkHistogram bucketsTVar) =
+    liftIO $ histCountsPerBucket <$> STM.atomically (STM.readTVar bucketsTVar)
 
 -- | Record an observation.
 insert :: Double -> BucketCounts -> BucketCounts
@@ -92,19 +99,19 @@ insert value BucketCounts { histTotal = total, histCount = count, histCountsPerB
 collectHistogram :: Info -> STM.TVar BucketCounts -> IO [SampleGroup]
 collectHistogram info bucketCounts = STM.atomically $ do
     BucketCounts total count counts <- STM.readTVar bucketCounts
-    let sumSample = Sample (name ++ "_sum") [] (bsShow total)
-    let countSample = Sample (name ++ "_count") [] (bsShow count)
-    let infSample = Sample (name ++ "_bucket") [(bucketLabel, "+Inf")] (bsShow count)
+    let sumSample = Sample (name <> "_sum") [] (bsShow total)
+    let countSample = Sample (name <> "_count") [] (bsShow count)
+    let infSample = Sample (name <> "_bucket") [(bucketLabel, "+Inf")] (bsShow count)
     let samples = map toSample (cumulativeSum (Map.toAscList counts))
     return [SampleGroup info HistogramType $ samples ++ [infSample, sumSample, countSample]]
     where
         toSample (upperBound, count') =
-            Sample (name ++ "_bucket") [(bucketLabel, formatFloat upperBound)] $ bsShow count'
+            Sample (name <> "_bucket") [(bucketLabel, formatFloat upperBound)] $ bsShow count'
         name = metricName info
 
         -- We don't particularly want scientific notation, so force regular
         -- numeric representation instead.
-        formatFloat x = showFFloat Nothing x ""
+        formatFloat x = T.pack (showFFloat Nothing x "")
 
         cumulativeSum xs = zip (map fst xs) (scanl1 (+) (map snd xs))
 
@@ -113,7 +120,7 @@ collectHistogram info bucketCounts = STM.atomically $ do
 
 -- | The label that defines the upper bound of a bucket of a histogram. @"le"@
 -- is short for "less than or equal to".
-bucketLabel :: String
+bucketLabel :: Text
 bucketLabel = "le"
 
 -- | The default Histogram buckets. These are tailored to measure the response
