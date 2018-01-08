@@ -7,7 +7,7 @@ module Network.Wai.Middleware.Prometheus
   ( prometheus
   , PrometheusSettings(..)
   , Default.def
-  , instrumentWithLabels
+  , instrumentHandlerValue
   , instrumentApp
   , instrumentIO
   , metricsApp
@@ -60,11 +60,11 @@ requestLatency = Prom.unsafeRegister $ Prom.vector ("handler", "method", "status
 -- If you use this function you will likely want to override the default value
 -- of 'prometheusInstrumentApp' to be false so that your app does not get double
 -- instrumented.
-instrumentWithLabels ::
-     (Wai.Request -> Text) -- ^ The labelling function used to identify this app
+instrumentHandlerValue ::
+     (Wai.Request -> Text) -- ^ The function used to derive the "handler" value in Prometheus
   -> Wai.Application -- ^ The app to instrument
   -> Wai.Application -- ^ The instrumented app
-instrumentWithLabels f app req respond = do
+instrumentHandlerValue f app req respond = do
   start <- getTime Monotonic
   app req $ \res -> do
     end <- getTime Monotonic
@@ -83,7 +83,7 @@ instrumentApp ::
   -> Wai.Application -- ^ The app to instrument
   -> Wai.Application -- ^ The instrumented app
 instrumentApp handler app req respond =
-  instrumentWithLabels (const handler) app req respond
+  instrumentHandlerValue (const handler) app req respond
 
 -- | Instrument an IO action with timing metrics. This function can be used if
 -- you would like to get more fine grained metrics, for instance this can be
