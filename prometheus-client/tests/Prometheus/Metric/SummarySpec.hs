@@ -22,6 +22,7 @@ import Test.QuickCheck
 
 spec :: Spec
 spec = describe "Prometheus.Metric.Summary" $ do
+    observeToUnsafe 
     let windowSize = 10000
     it "computes quantiles correctly for [0,10000) in order" $ do
         m <- register $ summary (Info "name" "help") quantiles
@@ -51,6 +52,17 @@ spec = describe "Prometheus.Metric.Summary" $ do
             m <- register $ summary (Info "name" "help") quantiles
             mapM_ (m `observe`) observations
             checkQuantiles m windowSize =<< getQuantiles quantiles m
+
+{-# NOINLINE testMetric #-}
+testMetric :: Summary
+testMetric = do
+  unsafeRegister $ summary (Info "test_histogram" "") quantiles
+  
+observeToUnsafe :: Spec
+observeToUnsafe =
+  it "Is able to observe to a top-level 'unsafeRegister' metric" $ do
+    observe testMetric 1 `shouldReturn` ()
+
 
 badObservations1 :: [Double]
 badObservations1 = [38.0, 17.0, 5.0, 36.0, 85.0, 63.0, 3.0, 24.0, 0.0, 12.0,

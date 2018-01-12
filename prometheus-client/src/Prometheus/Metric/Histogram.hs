@@ -1,3 +1,4 @@
+{-# language BangPatterns #-}
 {-# language OverloadedStrings #-}
 
 module Prometheus.Metric.Histogram (
@@ -75,7 +76,7 @@ instance Observer Histogram where
 -- | Transform the contents of a histogram.
 withHistogram :: MonadMonitor m
               => Histogram -> (BucketCounts -> BucketCounts) -> m ()
-withHistogram (MkHistogram bucketCounts) f =
+withHistogram (MkHistogram !bucketCounts) f =
   doIO $ STM.atomically $ STM.modifyTVar' bucketCounts f
 
 -- | Retries a map of upper bounds to counts of values observed that are

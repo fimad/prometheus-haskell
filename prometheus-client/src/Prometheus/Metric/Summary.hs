@@ -1,3 +1,4 @@
+{-# language BangPatterns #-}
 {-# language OverloadedStrings #-}
 
 module Prometheus.Metric.Summary (
@@ -49,7 +50,7 @@ summary info quantiles = Metric $ do
 
 withSummary :: MonadMonitor m
             => Summary -> (Estimator -> Estimator) -> m ()
-withSummary (MkSummary valueTVar) f =
+withSummary (MkSummary !valueTVar) f =
     doIO $ STM.atomically $ do
         STM.modifyTVar' valueTVar compress
         STM.modifyTVar' valueTVar f
