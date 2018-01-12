@@ -55,7 +55,7 @@ requestLatency = Prom.unsafeRegister $ Prom.vector ("handler", "method", "status
     where info = Prom.Info "http_request_duration_seconds"
                            "The HTTP request latencies in seconds."
 
--- | Instrument a WAI app with a user-defined labelling function.
+-- | This function is used to populate the @handler@ label of all Prometheus metrics recorded by this library.
 --
 -- If you use this function you will likely want to override the default value
 -- of 'prometheusInstrumentApp' to be false so that your app does not get double
