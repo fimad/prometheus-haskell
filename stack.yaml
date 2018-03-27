@@ -4,4 +4,4 @@ packages:
 - wai-middleware-prometheus/
 - example/
 - prometheus-client/
-resolver: lts-7.2
+resolver: lts-11.2
