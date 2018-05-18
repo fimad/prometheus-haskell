@@ -131,38 +131,38 @@ ghcCollectors = [
 #else
 ghcCollectors :: [IO [SampleGroup]]
 ghcCollectors = [
-      statsCollector "gcs" "Total number of GCs" CounterType gcs
-    , statsCollector "major_gcs" "Total number of major (oldest generation) GCs" CounterType major_gcs
-    , statsCollector "allocated_bytes" "Total bytes allocated" CounterType allocated_bytes
-    , statsCollector "max_live_bytes" "Maximum live data (including large objects + compact regions)" CounterType max_live_bytes
-    , statsCollector "max_large_objects_bytes" "Maximum live data in large objects" CounterType max_large_objects_bytes
-    , statsCollector "max_compact_bytes" "Maximum live data in compact regions" CounterType max_compact_bytes
-    , statsCollector "max_slop_bytes" "Maximum slop" CounterType max_slop_bytes
-    , statsCollector "max_mem_in_use_bytes" "Maximum memory in use by the RTS" CounterType max_mem_in_use_bytes
-    , statsCollector "cumulative_live_bytes" "Sum of live bytes across all major GCs. Divided by major_gcs gives the average live data over the lifetime of the program." CounterType cumulative_live_bytes
-    , statsCollector "copied_bytes" "Sum of copied_bytes across all GCs" CounterType copied_bytes
-    , statsCollector "par_copied_bytes" "Sum of copied_bytes across all parallel GCs" CounterType par_copied_bytes
-    , statsCollector "cumulative_par_max_copied_bytes" "Sum of par_max_copied_bytes across all parallel GCs" CounterType cumulative_par_max_copied_bytes
-    , statsCollector "mutator_cpu_ns" "Total CPU time used by the mutator" CounterType mutator_cpu_ns
-    , statsCollector "mutator_elapsed_ns" "Total elapsed time used by the mutator" CounterType mutator_elapsed_ns
-    , statsCollector "gc_cpu_ns" "Total CPU time used by the GC" CounterType gc_cpu_ns
-    , statsCollector "gc_elapsed_ns" "Total elapsed time used by the GC" CounterType gc_elapsed_ns
-    , statsCollector "cpu_ns" "Total CPU time (at the previous GC)" CounterType cpu_ns
-    , statsCollector "elapsed_ns" "Total elapsed time (at the previous GC)" CounterType elapsed_ns
+      statsCollector "ghc_gcs" "Total number of GCs" CounterType gcs
+    , statsCollector "ghc_major_gcs" "Total number of major (oldest generation) GCs" CounterType major_gcs
+    , statsCollector "ghc_allocated_bytes" "Total bytes allocated" CounterType allocated_bytes
+    , statsCollector "ghc_max_live_bytes" "Maximum live data (including large objects + compact regions)" CounterType max_live_bytes
+    , statsCollector "ghc_max_large_objects_bytes" "Maximum live data in large objects" CounterType max_large_objects_bytes
+    , statsCollector "ghc_max_compact_bytes" "Maximum live data in compact regions" CounterType max_compact_bytes
+    , statsCollector "ghc_max_slop_bytes" "Maximum slop" CounterType max_slop_bytes
+    , statsCollector "ghc_max_mem_in_use_bytes" "Maximum memory in use by the RTS" CounterType max_mem_in_use_bytes
+    , statsCollector "ghc_cumulative_live_bytes" "Sum of live bytes across all major GCs. Divided by major_gcs gives the average live data over the lifetime of the program." CounterType cumulative_live_bytes
+    , statsCollector "ghc_copied_bytes" "Sum of copied_bytes across all GCs" CounterType copied_bytes
+    , statsCollector "ghc_par_copied_bytes" "Sum of copied_bytes across all parallel GCs" CounterType par_copied_bytes
+    , statsCollector "ghc_cumulative_par_max_copied_bytes" "Sum of par_max_copied_bytes across all parallel GCs" CounterType cumulative_par_max_copied_bytes
+    , statsCollector "ghc_mutator_cpu_ns" "Total CPU time used by the mutator" CounterType mutator_cpu_ns
+    , statsCollector "ghc_mutator_elapsed_ns" "Total elapsed time used by the mutator" CounterType mutator_elapsed_ns
+    , statsCollector "ghc_gc_cpu_ns" "Total CPU time used by the GC" CounterType gc_cpu_ns
+    , statsCollector "ghc_gc_elapsed_ns" "Total elapsed time used by the GC" CounterType gc_elapsed_ns
+    , statsCollector "ghc_cpu_ns" "Total CPU time (at the previous GC)" CounterType cpu_ns
+    , statsCollector "ghc_elapsed_ns" "Total elapsed time (at the previous GC)" CounterType elapsed_ns
 
-    , statsCollector "gcdetails_gen" "The generation number of this GC" CounterType (gcdetails_gen . gc)
-    , statsCollector "gcdetails_threads" "Number of threads used in this GC" CounterType (gcdetails_threads . gc)
-    , statsCollector "gcdetails_allocated_bytes" "Number of bytes allocated since the previous GC" CounterType (gcdetails_allocated_bytes . gc)
-    , statsCollector "gcdetails_live_bytes" "Total amount of live data in the heap (incliudes large + compact data)" CounterType (gcdetails_live_bytes . gc)
-    , statsCollector "gcdetails_large_objects_bytes" "Total amount of live data in large objects" CounterType (gcdetails_large_objects_bytes . gc)
-    , statsCollector "gcdetails_compact_bytes" "Total amount of live data in compact regions" CounterType (gcdetails_compact_bytes . gc)
-    , statsCollector "gcdetails_slop_bytes" "Total amount of slop (wasted memory)" CounterType (gcdetails_slop_bytes . gc)
-    , statsCollector "gcdetails_mem_in_use_bytes" "Total amount of memory in use by the RTS" CounterType (gcdetails_mem_in_use_bytes . gc)
-    , statsCollector "gcdetails_copied_bytes" "Total amount of data copied during this GC" CounterType (gcdetails_copied_bytes . gc)
-    , statsCollector "gcdetails_par_max_copied_bytes" "In parallel GC, the max amount of data copied by any one thread" CounterType (gcdetails_par_max_copied_bytes . gc)
-    , statsCollector "gcdetails_sync_elapsed_ns" "The time elapsed during synchronisation before GC" CounterType (gcdetails_sync_elapsed_ns . gc)
-    , statsCollector "gcdetails_cpu_ns" "The CPU time used during GC itself" CounterType (gcdetails_cpu_ns . gc)
-    , statsCollector "gcdetails_elapsed_ns" "The time elapsed during GC itself" CounterType (gcdetails_elapsed_ns . gc)
+    , statsCollector "ghc_gcdetails_gen" "The generation number of this GC" CounterType (gcdetails_gen . gc)
+    , statsCollector "ghc_gcdetails_threads" "Number of threads used in this GC" CounterType (gcdetails_threads . gc)
+    , statsCollector "ghc_gcdetails_allocated_bytes" "Number of bytes allocated since the previous GC" CounterType (gcdetails_allocated_bytes . gc)
+    , statsCollector "ghc_gcdetails_live_bytes" "Total amount of live data in the heap (incliudes large + compact data)" CounterType (gcdetails_live_bytes . gc)
+    , statsCollector "ghc_gcdetails_large_objects_bytes" "Total amount of live data in large objects" CounterType (gcdetails_large_objects_bytes . gc)
+    , statsCollector "ghc_gcdetails_compact_bytes" "Total amount of live data in compact regions" CounterType (gcdetails_compact_bytes . gc)
+    , statsCollector "ghc_gcdetails_slop_bytes" "Total amount of slop (wasted memory)" CounterType (gcdetails_slop_bytes . gc)
+    , statsCollector "ghc_gcdetails_mem_in_use_bytes" "Total amount of memory in use by the RTS" CounterType (gcdetails_mem_in_use_bytes . gc)
+    , statsCollector "ghc_gcdetails_copied_bytes" "Total amount of data copied during this GC" CounterType (gcdetails_copied_bytes . gc)
+    , statsCollector "ghc_gcdetails_par_max_copied_bytes" "In parallel GC, the max amount of data copied by any one thread" CounterType (gcdetails_par_max_copied_bytes . gc)
+    , statsCollector "ghc_gcdetails_sync_elapsed_ns" "The time elapsed during synchronisation before GC" CounterType (gcdetails_sync_elapsed_ns . gc)
+    , statsCollector "ghc_gcdetails_cpu_ns" "The CPU time used during GC itself" CounterType (gcdetails_cpu_ns . gc)
+    , statsCollector "ghc_gcdetails_elapsed_ns" "The time elapsed during GC itself" CounterType (gcdetails_elapsed_ns . gc)
   ]
 #endif
 
