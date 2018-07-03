@@ -156,27 +156,27 @@ ghcCollectors = [
     , statsCollector
             "ghc_max_live_bytes"
             "Maximum live data (including large objects + compact regions)"
-            CounterType -- TODO: Shouldn't it be a Gauge? It only ever goes up, but it's not counting anything
+            GaugeType
             max_live_bytes
     , statsCollector
             "ghc_max_large_objects_bytes"
             "Maximum live data in large objects"
-            CounterType
+            GaugeType
             max_large_objects_bytes
     , statsCollector
             "ghc_max_compact_bytes"
             "Maximum live data in compact regions"
-            CounterType
+            GaugeType
             max_compact_bytes
     , statsCollector
             "ghc_max_slop_bytes"
             "Maximum slop"
-            CounterType
+            GaugeType
             max_slop_bytes
     , statsCollector
             "ghc_max_mem_in_use_bytes"
             "Maximum memory in use by the RTS"
-            CounterType
+            GaugeType
             max_mem_in_use_bytes
     , statsCollector
             "ghc_cumulative_live_bytes_total"
