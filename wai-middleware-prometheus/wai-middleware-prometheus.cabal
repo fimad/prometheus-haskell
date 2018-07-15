@@ -1,5 +1,5 @@
 name:                wai-middleware-prometheus
-version:             0.3.0
+version:             0.3.1
 synopsis:
     WAI middlware for exposing http://prometheus.io metrics.
 description:
