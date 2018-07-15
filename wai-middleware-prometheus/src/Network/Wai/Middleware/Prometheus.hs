@@ -117,8 +117,14 @@ prometheus PrometheusSettings{..} app req respond =
         && Wai.pathInfo req == prometheusEndPoint
         -- XXX: Should probably be "metrics" rather than "prometheus", since
         -- "prometheus" can be confused with actual prometheus.
-    then instrumentApp "prometheus" (const respondWithMetrics) req respond
-    else instrumentApp "app" app req respond
+    then
+      if prometheusInstrumentPrometheus
+        then instrumentApp "prometheus" (const respondWithMetrics) req respond
+        else respondWithMetrics respond
+    else
+      if prometheusInstrumentApp
+        then instrumentApp "app" app req respond
+        else app req respond
 
 
 -- | WAI Application that serves the Prometheus metrics page regardless of
