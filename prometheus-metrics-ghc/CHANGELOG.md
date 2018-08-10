@@ -1,6 +1,8 @@
 # Change Log
 
-## HEAD
+## 1.0.0
+
+- Supports prometheus-client-1.0.0
 
 ## 0.3.0
 

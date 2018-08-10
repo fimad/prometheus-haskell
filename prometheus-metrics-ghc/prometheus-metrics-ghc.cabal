@@ -1,5 +1,5 @@
 name:                prometheus-metrics-ghc
-version:             0.3.0
+version:             1.0.0
 synopsis:
     Metrics exposing GHC runtime information for use with prometheus-client.
 description:
@@ -25,7 +25,7 @@ library
       Prometheus.Metric.GHC
   build-depends:
       base               >=4.7 && <5
-    , prometheus-client
+    , prometheus-client  >=1.0.0 && <1.1
     , utf8-string        >=0.3
     , text
   ghc-options: -Wall
