@@ -1,8 +1,8 @@
 # Change Log
 
-## HEAD
+## 1.0.0 -- 2018-08-10
 
-Version 0.4.0 is a significant rewrite of some core parts of the API, as
+Version 1.0.0 is a significant rewrite of some core parts of the API, as
 `prometheus-effect` has been deprecated in favour of this library.
 
 ### Breaking Changes
