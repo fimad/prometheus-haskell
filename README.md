@@ -18,7 +18,7 @@ folder in the root directory of the git repository.
 
 This is the base library that defines the core data types and metrics. It has a
 few dependencies and is intended to provide the minimum functionality required
-to interact with Promethues.
+to interact with Prometheus.
 
 ## prometheus-metrics-ghc [![Hackage](https://img.shields.io/hackage/v/prometheus-metrics-ghc.svg)](https://hackage.haskell.org/package/prometheus-metrics-ghc)
 
