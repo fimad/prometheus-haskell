@@ -2,7 +2,13 @@
 {-# language OverloadedStrings #-}
 {-# language RecordWildCards #-}
 
-module Prometheus.Metric.Proc ( procMetrics ) where
+{-|
+
+This module exposes a @prometheus-client@ "Metric" for exporting information
+about the currently running process.
+
+-}
+module Prometheus.Metric.Proc ( ProcMetrics(..), procMetrics ) where
 
 import Data.Char ( isSpace )
 import Data.Maybe ( catMaybes )
@@ -17,15 +23,34 @@ import qualified Text.Regex.Applicative as RE
 import qualified Text.Regex.Applicative.Common as RE
 
 
+-- | The tag for 'procMetrics'.
 data ProcMetrics =
   ProcMetrics
 
 
+{-|
+
+Unregistered metrics for the current process. This is to be used with
+'Prometheus.register' to register the metrics.
+
+This exports the following:
+
+
+* @process_cpu_seconds_total@
+* @process_start_time_seconds@
+* @process_virtual_memory_bytes@
+* @process_resident_memory_bytes@
+
+See the official Prometheus documentation for more information on these standard
+metrics: https://prometheus.io/docs/instrumenting/writing_clientlibs/#standard-and-runtime-collectors
+
+-}
 procMetrics :: Prometheus.Metric ProcMetrics
 procMetrics =
   Metric ( return ( ProcMetrics, collect ) )
 
 
+-- | Returns the number of CPU clock ticks per second.
 foreign import ccall unsafe
   clk_tck :: CLong
 
@@ -43,7 +68,7 @@ collect = do
 
 
 toMetrics :: ProcStat -> [ SampleGroup ]
-toMetrics ProcStat{..} =
+toMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
   catMaybes
     [ Just process_cpu_seconds_total
     , process_start_time_seconds
@@ -86,9 +111,6 @@ toMetrics ProcStat{..} =
         GaugeType
         ( rss * sysconfPageSize )
 
-    fromTicks ticks =
-      fromIntegral ticks / fromIntegral clk_tck :: Double
-
     metric metricName metricHelp metricType value =
       SampleGroup
         Info{..}
@@ -100,6 +122,23 @@ toMetrics ProcStat{..} =
         ]
 
 
+-- | Convert a number of clock ticks into the corresponding duration in seconds.
+fromTicks :: Int -> Double
+fromTicks ticks =
+  fromIntegral ticks / fromIntegral clk_tck
+
+
+{-|
+
+Returns the current boot time in seconds since Unix epoch. This is a Maybe
+as we might not to be able to successfully parse this information out of
+@/proc/stat@.
+
+'unsafePerformIO' is used as this value does not change during the
+execution of the program, so this gives us a lightweight cache for this
+value.
+
+-}
 {-# NOINLINE mbtime #-}
 mbtime :: Maybe Int
 mbtime = unsafePerformIO $ do
@@ -107,17 +146,37 @@ mbtime = unsafePerformIO $ do
     <$> readFile "/proc/stat"
 
 
+-- | Specific metrics from @/proc/xyz/stat@ that we are interested in.
 data ProcStat = ProcStat
   { utime :: Int
+    -- ^ Amount of time that this process has been scheduled in user mode,
+    -- measured in clock ticks (divide by sysconf(_SC_CLK_TCK)).
   , stime :: Int
+    -- ^ Amount of time that this process has been scheduled in kernel mode,
+    -- measured in clock ticks (divide by sysconf(_SC_CLK_TCK)).
   , starttime :: Int
+    -- ^ The time the process started after system boot. In kernels before Linux
+    -- 2.6, this value was expressed in jiffies. Since Linux 2.6, the value is
+    -- expressed in clock ticks (divide by sysconf(_SC_CLK_TCK)).
   , vsize :: Int
+    -- ^ Virtual memory size in bytes.
   , rss :: Int
+    -- ^ Resident Set Size: number of pages the process has in real memory. This
+    -- is just the pages which count toward text, data, or stack space. This
+    -- does not include pages which have not been demand-loaded in, or which are
+    -- swapped out.
   }
   deriving
     ( Show )
 
 
+{-|
+
+A regular expression for parsing @/proc/xyz/stat@. See
+@man 5 proc@ for more information on the format of this file:
+https://linux.die.net/man/5/proc.
+
+-}
 parseProcStat :: RE.RE Char ProcStat
 parseProcStat =
   ProcStat
