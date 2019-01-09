@@ -13,7 +13,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Prometheus.Metric.Proc
-  build-depends:       base >=4.10 && <4.12
+  build-depends:       base >=4.10 && <4.13
                      , filepath >=1.4 && <1.5
                      , unix-memory >=0.1 && <0.2
                      , unix >=2.7 && <2.8
