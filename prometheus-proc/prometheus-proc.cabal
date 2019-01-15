@@ -1,0 +1,27 @@
+name:                prometheus-proc
+version:             0.1.0.0
+synopsis:            Export metrics from /proc for the current process
+homepage:            https://github.com/fimad/prometheus-haskell
+license:             BSD3
+license-file:        LICENSE
+author:              Ollie Charles
+maintainer:          ollie@ocharles.org.uk
+category:            System
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+source-repository head
+  type:     git
+  location: https://github.com/fimad/prometheus-haskell
+
+library
+  exposed-modules:     Prometheus.Metric.Proc
+  build-depends:       base >=4.10 && <4.13
+                     , filepath >=1.4 && <1.5
+                     , unix-memory >=0.1 && <0.2
+                     , unix >=2.7 && <2.8
+                     , regex-applicative >=0.3 && <0.4
+                     , prometheus-client >= 1.0.0 && < 1.1
+  hs-source-dirs:      src
+  default-language:    Haskell2010
