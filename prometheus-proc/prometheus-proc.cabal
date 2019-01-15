@@ -11,6 +11,10 @@ build-type:          Simple
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
+source-repository head
+  type:     git
+  location: https://github.com/fimad/prometheus-haskell
+
 library
   exposed-modules:     Prometheus.Metric.Proc
   build-depends:       base >=4.10 && <4.13
