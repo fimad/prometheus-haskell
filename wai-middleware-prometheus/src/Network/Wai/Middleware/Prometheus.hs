@@ -11,6 +11,7 @@ module Network.Wai.Middleware.Prometheus
   , instrumentApp
   , instrumentIO
   , metricsApp
+  , observeSeconds  -- for allowing to re-implement instrumentHandlerValue; better patch coming up!
   ) where
 
 import qualified Data.Default as Default
