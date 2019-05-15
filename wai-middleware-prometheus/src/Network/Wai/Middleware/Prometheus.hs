@@ -10,8 +10,8 @@ module Network.Wai.Middleware.Prometheus
   , instrumentHandlerValue
   , instrumentApp
   , instrumentIO
+  , observeSeconds
   , metricsApp
-  , observeSeconds  -- for allowing to re-implement instrumentHandlerValue; better patch coming up!
   ) where
 
 import qualified Data.Default as Default
@@ -103,9 +103,16 @@ instrumentIO label io = do
     observeSeconds label Nothing Nothing start end
     return result
 
-observeSeconds :: Text -> Maybe Text -> Maybe Text -> TimeSpec -> TimeSpec -> IO ()
+-- | Record an event to the middleware metric.
+observeSeconds :: Text         -- ^ handler label
+               -> Maybe Text   -- ^ method
+               -> Maybe Text   -- ^ status
+               -> TimeSpec     -- ^ start time
+               -> TimeSpec     -- ^ end time
+               -> IO ()
 observeSeconds handler method status start end = do
-    let latency = fromRational $ toRational (toNanoSecs (end `diffTimeSpec` start) % 1000000000)
+    let latency :: Double
+        latency = fromRational $ toRational (toNanoSecs (end `diffTimeSpec` start) % 1000000000)
     Prom.withLabel requestLatency
                    (handler, fromMaybe "" method, fromMaybe "" status)
                    (flip Prom.observe latency)
