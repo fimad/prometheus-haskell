@@ -1,3 +1,9 @@
+# Next
+
+* Change all use of `Int` to `Int64`. `Int` is only guaranteed to be able to
+  represent values up to 2^29-1, but entries in /proc/stat can often exceed that
+  (for example processes with a high resident memory usage) on 32-bit machines.
+
 # 0.1.0.0 -- 2019-01-15
 
 * Initial release.
