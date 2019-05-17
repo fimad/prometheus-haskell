@@ -83,7 +83,7 @@ instrumentHandlerValueWithFilter resFilter f app req respond = do
   start <- getTime Monotonic
   app req $ \res -> do
     case resFilter res of
-      Nothing -> pure ()
+      Nothing -> return ()
       Just res' -> do
         end <- getTime Monotonic
         let method = Just $ decodeUtf8 (Wai.requestMethod req)
