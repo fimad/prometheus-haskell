@@ -18,7 +18,6 @@ install:
  - travis_retry cabal update
 
 before_script:
-  - wget https://www.stackage.org/lts/cabal.config
   - cabal sandbox init
   - cabal sandbox add-source prometheus-client
   - cabal sandbox add-source prometheus-metrics-ghc
