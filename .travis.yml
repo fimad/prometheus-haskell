@@ -49,5 +49,5 @@ before_script:
 script:
   - cd prometheus-client && cabal build && cabal test
   - cd ../prometheus-metrics-ghc && cabal build && cabal test
-  - cd ../wai-middleware-prometheus && cabal build && cabal test
+  - cd ../wai-middleware-prometheus && cabal build -v && cabal test
   - cd ../example && cabal build
