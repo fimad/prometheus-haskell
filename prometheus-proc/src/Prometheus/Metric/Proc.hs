@@ -15,12 +15,15 @@ import Data.Char ( isSpace )
 import Data.Int ( Int64 )
 import Data.Maybe ( catMaybes )
 import Data.String ( fromString )
+import Data.Text ( Text )
 import Foreign.C
 import Prometheus
+import System.Directory ( listDirectory )
 import System.FilePath
 import System.IO.Unsafe
 import System.Posix.Memory ( sysconfPageSize )
 import System.Posix.Process ( getProcessID )
+import System.Posix.Types ( ProcessID )
 import qualified Text.Regex.Applicative as RE
 import qualified Text.Regex.Applicative.Common as RE
 
@@ -63,14 +66,28 @@ collect = do
     getProcessID
 
   mprocStat <-
-      RE.match parseProcStat <$> readFile ( "/" </> "proc" </> show pid </> "stat" )
+      RE.match parseProcStat <$> readFile ( procPidDir pid </> "stat" )
 
-  return
-    ( foldMap ( toMetrics ) mprocStat )
+  processOpenFds <-
+    collectProcessOpenFds pid
+
+  return ( processOpenFds : foldMap ( procStatToMetrics ) mprocStat )
 
 
-toMetrics :: ProcStat -> [ SampleGroup ]
-toMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
+collectProcessOpenFds :: ProcessID -> IO SampleGroup
+collectProcessOpenFds pid = do
+  fmap
+    ( metric "process_open_fds" "Number of open file descriptors." GaugeType . length )
+    ( listDirectory ( procPidDir pid </> "fd" ) )
+
+
+procPidDir :: ProcessID -> FilePath
+procPidDir pid =
+  "/" </> "proc" </> show pid
+
+
+procStatToMetrics :: ProcStat -> [ SampleGroup ]
+procStatToMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
   catMaybes
     [ Just process_cpu_seconds_total
     , process_start_time_seconds
@@ -113,15 +130,17 @@ toMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
         GaugeType
         ( rss * fromIntegral sysconfPageSize )
 
-    metric metricName metricHelp metricType value =
-      SampleGroup
-        Info{..}
-        metricType
-        [ Sample
-            metricName
-            []
-            ( fromString ( show value ) )
-        ]
+
+metric :: Show a => Text -> Text -> SampleType -> a -> SampleGroup
+metric metricName metricHelp metricType value =
+  SampleGroup
+    Info{..}
+    metricType
+    [ Sample
+        metricName
+        []
+        ( fromString ( show value ) )
+    ]
 
 
 -- | Convert a number of clock ticks into the corresponding duration in seconds.
