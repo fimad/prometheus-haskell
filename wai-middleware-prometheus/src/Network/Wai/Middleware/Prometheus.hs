@@ -8,6 +8,8 @@ module Network.Wai.Middleware.Prometheus
   , PrometheusSettings(..)
   , Default.def
   , instrumentHandlerValue
+  , instrumentHandlerValueWithFilter
+  , ignoreRawResponses
   , instrumentApp
   , instrumentIO
   , observeSeconds
@@ -22,6 +24,7 @@ import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.Wai as Wai
+import qualified Network.Wai.Internal as Wai (Response(ResponseRaw))
 import qualified Prometheus as Prom
 import System.Clock (Clock(..), TimeSpec, diffTimeSpec, getTime, toNanoSecs)
 
@@ -61,18 +64,54 @@ requestLatency = Prom.unsafeRegister $ Prom.vector ("handler", "method", "status
 -- If you use this function you will likely want to override the default value
 -- of 'prometheusInstrumentApp' to be false so that your app does not get double
 -- instrumented.
+--
+-- WARNING: If you have 'ResponseRaw' values in your API, consider using
+-- @instrumentHandlerValueWithFilter ignoreRawResponses@ instead.
 instrumentHandlerValue ::
      (Wai.Request -> Text) -- ^ The function used to derive the "handler" value in Prometheus
   -> Wai.Application -- ^ The app to instrument
   -> Wai.Application -- ^ The instrumented app
-instrumentHandlerValue f app req respond = do
+instrumentHandlerValue = instrumentHandlerValueWithFilter Just
+
+-- | A more flexible variant of 'instrumentHandlerValue'.  The filter can change some
+-- responses, or drop others entirely.
+instrumentHandlerValueWithFilter ::
+     (Wai.Response -> Maybe Wai.Response) -- ^ Response filter
+  -> (Wai.Request -> Text) -- ^ The function used to derive the "handler" value in Prometheus
+  -> Wai.Application -- ^ The app to instrument
+  -> Wai.Application -- ^ The instrumented app
+instrumentHandlerValueWithFilter resFilter f app req respond = do
   start <- getTime Monotonic
   app req $ \res -> do
-    end <- getTime Monotonic
-    let method = Just $ decodeUtf8 (Wai.requestMethod req)
-    let status = Just $ T.pack (show (HTTP.statusCode (Wai.responseStatus res)))
-    observeSeconds (f req) method status start end
+    case resFilter res of
+      Nothing -> return ()
+      Just res' -> do
+        end <- getTime Monotonic
+        let method = Just $ decodeUtf8 (Wai.requestMethod req)
+        let status = Just $ T.pack (show (HTTP.statusCode (Wai.responseStatus res')))
+        observeSeconds (f req) method status start end
     respond res
+
+-- | 'Wai.ResponseRaw' values have two parts: an action that can be executed to construct a
+-- 'Wai.Response', and a pure "backup" 'Wai.Response' in case the computation fails.  Since
+-- the pure selectors like 'Wai.responseStatus' are pure and it makes no sense for them to
+-- call the action, they just go to the backup response and pull the value from that:
+--
+-- @
+-- responseStatus (ResponseRaw ...
+--   (ResponseBuilder (Status 500 "blargh") ... ...))
+-- == Status {statusCode = 500, statusMessage = "blargh"}
+-- @
+--
+-- This is often not what you want.  For example, if you have an end-point for establishing
+-- websocket connections that has a backup response with status 5xx, every websocket
+-- connection request, whether successful or not, will register as an internal server error.
+--
+-- This helper therefore filters out all raw requests so they won't create any metrics.  Use
+-- together with 'instrumentHandlerValueWithFilter'.
+ignoreRawResponses :: Wai.Response -> Maybe Wai.Response
+ignoreRawResponses (Wai.ResponseRaw {}) = Nothing
+ignoreRawResponses res = Just res
 
 -- | Instrument a WAI app with the default WAI metrics.
 --
