@@ -111,7 +111,7 @@ toMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
         "process_resident_memory_bytes"
         "Resident memory size in bytes."
         GaugeType
-        ( rss * sysconfPageSize )
+        ( rss * fromIntegral sysconfPageSize )
 
     metric metricName metricHelp metricType value =
       SampleGroup
