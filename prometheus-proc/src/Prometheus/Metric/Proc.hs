@@ -62,15 +62,28 @@ collect = do
   pid <-
     getProcessID
 
+  let
+    procPidDir =
+      "/" </> "proc" </> show pid
+
   mprocStat <-
-      RE.match parseProcStat <$> readFile ( "/" </> "proc" </> show pid </> "stat" )
+      RE.match parseProcStat <$> readFile ( procPidDir </> "stat" )
 
-  return
-    ( foldMap ( toMetrics ) mprocStat )
+  processOpenFds <-
+    collectProcessOpenFds
+
+  return ( processOpenFds : foldMap ( procStatToMetrics ) mprocStat )
 
 
-toMetrics :: ProcStat -> [ SampleGroup ]
-toMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
+collectProcessOpenFds :: IO SampleGroup
+collectProcessOpenFds = do
+  fmap
+    ( metric "process_open_fds" "Number of open file descriptors." GaugeType . length )
+    ( listDirectory ( procPidDir </> "fd" ) )
+
+
+procStatToMetrics :: ProcStat -> [ SampleGroup ]
+procStatToMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
   catMaybes
     [ Just process_cpu_seconds_total
     , process_start_time_seconds
@@ -113,15 +126,16 @@ toMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
         GaugeType
         ( rss * sysconfPageSize )
 
-    metric metricName metricHelp metricType value =
-      SampleGroup
-        Info{..}
-        metricType
-        [ Sample
-            metricName
-            []
-            ( fromString ( show value ) )
-        ]
+
+metric metricName metricHelp metricType value =
+  SampleGroup
+    Info{..}
+    metricType
+    [ Sample
+        metricName
+        []
+        ( fromString ( show value ) )
+    ]
 
 
 -- | Convert a number of clock ticks into the corresponding duration in seconds.
