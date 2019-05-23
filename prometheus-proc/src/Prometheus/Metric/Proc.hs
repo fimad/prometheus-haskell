@@ -12,6 +12,7 @@ about the currently running process.
 module Prometheus.Metric.Proc ( ProcMetrics(..), procMetrics ) where
 
 import Data.Char ( isSpace )
+import Data.Int ( Int64 )
 import Data.Maybe ( catMaybes )
 import Data.String ( fromString )
 import Foreign.C
@@ -110,7 +111,7 @@ toMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
         "process_resident_memory_bytes"
         "Resident memory size in bytes."
         GaugeType
-        ( rss * sysconfPageSize )
+        ( rss * fromIntegral sysconfPageSize )
 
     metric metricName metricHelp metricType value =
       SampleGroup
@@ -124,7 +125,7 @@ toMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
 
 
 -- | Convert a number of clock ticks into the corresponding duration in seconds.
-fromTicks :: Int -> Double
+fromTicks :: Int64 -> Double
 fromTicks ticks =
   fromIntegral ticks / fromIntegral clk_tck
 
@@ -141,7 +142,7 @@ value.
 
 -}
 {-# NOINLINE mbtime #-}
-mbtime :: Maybe Int
+mbtime :: Maybe Int64
 mbtime = unsafePerformIO $ do
   fmap ( \( _, a, _ ) -> a ) . RE.findFirstInfix ( "btime " *> RE.decimal )
     <$> readFile "/proc/stat"
@@ -149,19 +150,19 @@ mbtime = unsafePerformIO $ do
 
 -- | Specific metrics from @/proc/xyz/stat@ that we are interested in.
 data ProcStat = ProcStat
-  { utime :: Int
+  { utime :: Int64
     -- ^ Amount of time that this process has been scheduled in user mode,
     -- measured in clock ticks (divide by sysconf(_SC_CLK_TCK)).
-  , stime :: Int
+  , stime :: Int64
     -- ^ Amount of time that this process has been scheduled in kernel mode,
     -- measured in clock ticks (divide by sysconf(_SC_CLK_TCK)).
-  , starttime :: Int
+  , starttime :: Int64
     -- ^ The time the process started after system boot. In kernels before Linux
     -- 2.6, this value was expressed in jiffies. Since Linux 2.6, the value is
     -- expressed in clock ticks (divide by sysconf(_SC_CLK_TCK)).
-  , vsize :: Int
+  , vsize :: Int64
     -- ^ Virtual memory size in bytes.
-  , rss :: Int
+  , rss :: Int64
     -- ^ Resident Set Size: number of pages the process has in real memory. This
     -- is just the pages which count toward text, data, or stack space. This
     -- does not include pages which have not been demand-loaded in, or which are
