@@ -15,6 +15,7 @@ import Data.Char ( isSpace )
 import Data.Int ( Int64 )
 import Data.Maybe ( catMaybes )
 import Data.String ( fromString )
+import Data.Text ( Text )
 import Foreign.C
 import Prometheus
 import System.Directory ( listDirectory )
@@ -130,6 +131,7 @@ procStatToMetrics ProcStat{ utime, stime, starttime, vsize, rss } =
         ( rss * fromIntegral sysconfPageSize )
 
 
+metric :: Show a => Text -> Text -> SampleType -> a -> SampleGroup
 metric metricName metricHelp metricType value =
   SampleGroup
     Info{..}
