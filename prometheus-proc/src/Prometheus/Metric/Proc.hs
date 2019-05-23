@@ -15,8 +15,10 @@ import Data.Char ( isSpace )
 import Data.Int ( Int64 )
 import Data.Maybe ( catMaybes )
 import Data.String ( fromString )
-import Data.Text ( Text )
+import Data.Text ( Text, unpack )
+import Data.Text.IO ( readFile )
 import Foreign.C
+import Prelude hiding ( readFile )
 import Prometheus
 import System.Directory ( listDirectory )
 import System.FilePath
@@ -66,7 +68,7 @@ collect = do
     getProcessID
 
   mprocStat <-
-      RE.match parseProcStat <$> readFile ( procPidDir pid </> "stat" )
+      RE.match parseProcStat . unpack <$> readFile ( procPidDir pid </> "stat" )
 
   processOpenFds <-
     collectProcessOpenFds pid
@@ -163,7 +165,7 @@ value.
 {-# NOINLINE mbtime #-}
 mbtime :: Maybe Int64
 mbtime = unsafePerformIO $ do
-  fmap ( \( _, a, _ ) -> a ) . RE.findFirstInfix ( "btime " *> RE.decimal )
+  fmap ( \( _, a, _ ) -> a ) . RE.findFirstInfix ( "btime " *> RE.decimal ) . unpack
     <$> readFile "/proc/stat"
 
 
