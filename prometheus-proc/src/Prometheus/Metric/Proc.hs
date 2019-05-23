@@ -17,10 +17,12 @@ import Data.Maybe ( catMaybes )
 import Data.String ( fromString )
 import Foreign.C
 import Prometheus
+import System.Directory ( listDirectory )
 import System.FilePath
 import System.IO.Unsafe
 import System.Posix.Memory ( sysconfPageSize )
 import System.Posix.Process ( getProcessID )
+import System.Posix.Types ( ProcessID )
 import qualified Text.Regex.Applicative as RE
 import qualified Text.Regex.Applicative.Common as RE
 
@@ -62,24 +64,25 @@ collect = do
   pid <-
     getProcessID
 
-  let
-    procPidDir =
-      "/" </> "proc" </> show pid
-
   mprocStat <-
-      RE.match parseProcStat <$> readFile ( procPidDir </> "stat" )
+      RE.match parseProcStat <$> readFile ( procPidDir pid </> "stat" )
 
   processOpenFds <-
-    collectProcessOpenFds
+    collectProcessOpenFds pid
 
   return ( processOpenFds : foldMap ( procStatToMetrics ) mprocStat )
 
 
-collectProcessOpenFds :: IO SampleGroup
-collectProcessOpenFds = do
+collectProcessOpenFds :: ProcessID -> IO SampleGroup
+collectProcessOpenFds pid = do
   fmap
     ( metric "process_open_fds" "Number of open file descriptors." GaugeType . length )
-    ( listDirectory ( procPidDir </> "fd" ) )
+    ( listDirectory ( procPidDir pid </> "fd" ) )
+
+
+procPidDir :: ProcessID -> FilePath
+procPidDir pid =
+  "/" </> "proc" </> show pid
 
 
 procStatToMetrics :: ProcStat -> [ SampleGroup ]
