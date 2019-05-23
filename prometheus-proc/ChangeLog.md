@@ -7,6 +7,9 @@
 * Export `process_open_fds`, a count of the number of entries in
   `/proc/$PID/fd`.
 
+* Export `process_max_fds`, which exports the soft ulimit of the maximum number
+  of file descriptors this process may open.
+
 # 0.1.0.0 -- 2019-01-15
 
 * Initial release.

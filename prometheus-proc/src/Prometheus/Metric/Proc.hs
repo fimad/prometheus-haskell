@@ -2,6 +2,7 @@
 {-# language NamedFieldPuns #-}
 {-# language OverloadedStrings #-}
 {-# language RecordWildCards #-}
+{-# language ViewPatterns #-}
 
 {-|
 
@@ -13,7 +14,8 @@ module Prometheus.Metric.Proc ( ProcMetrics(..), procMetrics ) where
 
 import Data.Char ( isSpace )
 import Data.Int ( Int64 )
-import Data.Maybe ( catMaybes )
+import Data.List ( isPrefixOf )
+import Data.Maybe ( catMaybes, maybeToList )
 import Data.String ( fromString )
 import Data.Text ( Text, unpack )
 import Data.Text.IO ( readFile )
@@ -73,7 +75,14 @@ collect = do
   processOpenFds <-
     collectProcessOpenFds pid
 
-  return ( processOpenFds : foldMap ( procStatToMetrics ) mprocStat )
+  processMaxFds <-
+    collectProcessMaxFds pid
+
+  return
+    ( [ processOpenFds ]
+        <> maybeToList processMaxFds
+        <> foldMap ( procStatToMetrics ) mprocStat
+    )
 
 
 collectProcessOpenFds :: ProcessID -> IO SampleGroup
@@ -81,6 +90,27 @@ collectProcessOpenFds pid = do
   fmap
     ( metric "process_open_fds" "Number of open file descriptors." GaugeType . length )
     ( listDirectory ( procPidDir pid </> "fd" ) )
+
+
+collectProcessMaxFds :: ProcessID -> IO ( Maybe SampleGroup )
+collectProcessMaxFds pid = do
+  limitLines <-
+    lines . unpack <$> readFile ( procPidDir pid </> "limits" )
+
+  case filter ( "Max open files" `isPrefixOf` ) limitLines of
+    ( words -> _max : _open : _files : n : _ ) : _ ->
+      return
+        ( Just
+            ( metric
+                "process_max_fds"
+                "Maximum number of open file descriptors."
+                GaugeType
+                ( read n :: Int )
+            )
+        )
+
+    _ ->
+      return Nothing
 
 
 procPidDir :: ProcessID -> FilePath
