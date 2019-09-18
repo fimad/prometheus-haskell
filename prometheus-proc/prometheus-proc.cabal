@@ -17,7 +17,7 @@ source-repository head
 
 library
   exposed-modules:     Prometheus.Metric.Proc
-  build-depends:       base >=4.10 && <4.13
+  build-depends:       base >=4.10 && <4.14
                      , directory >= 1.2.5.0 && < 1.4
                      , filepath >=1.4 && <1.5
                      , prometheus-client >= 1.0.0 && < 1.1
