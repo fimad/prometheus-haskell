@@ -41,12 +41,14 @@ ghcMetricsWithLabels labels = Metric (return (GHCMetrics, concat <$> mapM ($ lab
 #if __GLASGOW_HASKELL__ < 804
 ghcCollectors :: [LabelPairs -> IO [SampleGroup]]
 ghcCollectors = [
-        showCollector
+        \labels -> showCollector
+            labels
             "ghc_sparks"
             "The number of sparks in the local spark pool."
             GaugeType
             numSparks
-    ,   showCollector
+    ,   \labels -> showCollector
+            labels
             "ghc_capabilities"
             "The number of threads that can run truly simultaneously."
             GaugeType
