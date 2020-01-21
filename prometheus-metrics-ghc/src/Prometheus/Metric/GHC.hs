@@ -41,14 +41,12 @@ ghcMetricsWithLabels labels = Metric (return (GHCMetrics, concat <$> mapM ($ lab
 #if __GLASGOW_HASKELL__ < 804
 ghcCollectors :: [LabelPairs -> IO [SampleGroup]]
 ghcCollectors = [
-        \labels -> showCollector
-            labels
+        showCollector
             "ghc_sparks"
             "The number of sparks in the local spark pool."
             GaugeType
             numSparks
-    ,   \labels -> showCollector
-            labels
+    ,   showCollector
             "ghc_capabilities"
             "The number of threads that can run truly simultaneously."
             GaugeType
@@ -316,7 +314,7 @@ statsCollector :: Show a
 statsCollector name help sampleType stat labels = do
     statsEnabled <- getGCStatsEnabled
     if statsEnabled
-        then showCollector labels name help sampleType (stat <$> getGCStats)
+        then showCollector name help sampleType (stat <$> getGCStats) labels
         else return []
 #else
 statsCollector :: Show a
@@ -324,12 +322,12 @@ statsCollector :: Show a
 statsCollector name help sampleType stat labels = do
     statsEnabled <- getRTSStatsEnabled
     if statsEnabled
-        then showCollector labels name help sampleType (stat <$> getRTSStats)
+        then showCollector name help sampleType (stat <$> getRTSStats) labels
         else return []
 #endif
 
-showCollector :: Show a => LabelPairs -> Text -> Text -> SampleType -> IO a -> IO [SampleGroup]
-showCollector labels name help sampleType ioInt = do
+showCollector :: Show a => Text -> Text -> SampleType -> IO a -> LabelPairs -> IO [SampleGroup]
+showCollector name help sampleType ioInt labels = do
     value <- ioInt
     let info = Info name help
     let valueBS = BS.fromString $ show value
