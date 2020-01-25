@@ -13,6 +13,7 @@
 module Prometheus.Metric.GHC (
     GHCMetrics
 ,   ghcMetrics
+,   ghcMetricsWithLabels
 ) where
 
 import Control.Applicative ((<$>))
@@ -32,10 +33,13 @@ import Prometheus
 data GHCMetrics = GHCMetrics
 
 ghcMetrics :: Metric GHCMetrics
-ghcMetrics = Metric (return (GHCMetrics, concat <$> sequence ghcCollectors))
+ghcMetrics = ghcMetricsWithLabels []
+
+ghcMetricsWithLabels :: LabelPairs -> Metric GHCMetrics
+ghcMetricsWithLabels labels = Metric (return (GHCMetrics, concat <$> mapM ($ labels) ghcCollectors))
 
 #if __GLASGOW_HASKELL__ < 804
-ghcCollectors :: [IO [SampleGroup]]
+ghcCollectors :: [LabelPairs -> IO [SampleGroup]]
 ghcCollectors = [
         showCollector
             "ghc_sparks"
@@ -136,7 +140,7 @@ ghcCollectors = [
 
 #else
 
-ghcCollectors :: [IO [SampleGroup]]
+ghcCollectors :: [LabelPairs -> IO [SampleGroup]]
 ghcCollectors = [
       statsCollector
             "ghc_gcs_total"
@@ -306,25 +310,25 @@ rtsTimeToSeconds = (/ 1e9) . fromIntegral
 
 #if __GLASGOW_HASKELL__ < 804
 statsCollector :: Show a
-               => Text -> Text -> SampleType -> (GCStats -> a) -> IO [SampleGroup]
-statsCollector name help sampleType stat = do
+               => Text -> Text -> SampleType -> (GCStats -> a) -> LabelPairs -> IO [SampleGroup]
+statsCollector name help sampleType stat labels = do
     statsEnabled <- getGCStatsEnabled
     if statsEnabled
-        then showCollector name help sampleType (stat <$> getGCStats)
+        then showCollector name help sampleType (stat <$> getGCStats) labels
         else return []
 #else
 statsCollector :: Show a
-               => Text -> Text -> SampleType -> (RTSStats -> a) -> IO [SampleGroup]
-statsCollector name help sampleType stat = do
+               => Text -> Text -> SampleType -> (RTSStats -> a) -> LabelPairs -> IO [SampleGroup]
+statsCollector name help sampleType stat labels = do
     statsEnabled <- getRTSStatsEnabled
     if statsEnabled
-        then showCollector name help sampleType (stat <$> getRTSStats)
+        then showCollector name help sampleType (stat <$> getRTSStats) labels
         else return []
 #endif
 
-showCollector :: Show a => Text -> Text -> SampleType -> IO a -> IO [SampleGroup]
-showCollector name help sampleType ioInt = do
+showCollector :: Show a => Text -> Text -> SampleType -> IO a -> LabelPairs -> IO [SampleGroup]
+showCollector name help sampleType ioInt labels = do
     value <- ioInt
     let info = Info name help
     let valueBS = BS.fromString $ show value
-    return [SampleGroup info sampleType [Sample name [] valueBS]]
+    return [SampleGroup info sampleType [Sample name labels valueBS]]
