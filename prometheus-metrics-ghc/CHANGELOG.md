@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.0.1
+
+- Add `ghcMetricsWithLabels`. Thanks to @alaendle for contributing this new
+  feature!
+
 ## 1.0.0
 
 - Supports prometheus-client-1.0.0
