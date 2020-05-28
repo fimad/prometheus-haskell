@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.0.1
+
+- Allow GHC metrics to be labeled via `ghcMetricsWithLabels`.
+
 ## 1.0.0
 
 - Supports prometheus-client-1.0.0
