@@ -59,7 +59,7 @@ data BucketCounts = BucketCounts {
     -- | Counts for each bucket. The key is the upper-bound,
     -- value is the number of observations less-than-or-equal-to
     -- that upper bound, but greater than the next lowest upper bound.
-,   histCountsPerBucket :: Map.Map Bucket Int
+,   histCountsPerBucket :: !(Map.Map Bucket Int)
 } deriving (Show, Eq, Ord)
 
 emptyCounts :: [Bucket] -> BucketCounts
