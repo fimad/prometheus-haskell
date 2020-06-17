@@ -1,3 +1,7 @@
+# Unreleased
+
+* Support base-4.14 and GHC 8.10.
+
 # 0.1.2.0 -- 2019-09-18
 
 * Support base-4.13 and GHC 8.8.
