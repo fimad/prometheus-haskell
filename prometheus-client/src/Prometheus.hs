@@ -117,6 +117,7 @@ module Prometheus (
 -- >>> getHistogram myHistogram
 -- fromList [(5.0e-3,1),(1.0e-2,0),(2.5e-2,0),(5.0e-2,0),(0.1,0),(0.25,0),(0.5,0),(1.0,0),(2.5,0),(5.0,0),(10.0,0)]
 ,   Histogram
+,   Bucket
 ,   histogram
 ,   defaultBuckets
 ,   exponentialBuckets
