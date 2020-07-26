@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+Expose the `Bucket` type
+
 ## 1.0.0.1 -- 2020-05-27
 
 - Optimizations to improve memory usage.

@@ -3,6 +3,7 @@
 
 module Prometheus.Metric.Histogram (
     Histogram
+,   Bucket
 ,   histogram
 ,   defaultBuckets
 ,   exponentialBuckets
