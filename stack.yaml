@@ -1,7 +1,8 @@
 flags: {}
 packages:
-- prometheus-metrics-ghc/
-- wai-middleware-prometheus/
 - example/
-- prometheus-client/
+- prometheus-client
+- prometheus-metrics-ghc
+- prometheus-proc
+- wai-middleware-prometheus
 resolver: lts-11.2
