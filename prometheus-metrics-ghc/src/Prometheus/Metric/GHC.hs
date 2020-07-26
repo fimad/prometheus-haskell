@@ -16,7 +16,9 @@ module Prometheus.Metric.GHC (
 ,   ghcMetricsWithLabels
 ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>))
+#endif
 import qualified Data.ByteString.UTF8 as BS
 import Data.Text (Text)
 import Data.Fixed (Fixed, E9)
@@ -36,21 +38,45 @@ ghcMetrics :: Metric GHCMetrics
 ghcMetrics = ghcMetricsWithLabels []
 
 ghcMetricsWithLabels :: LabelPairs -> Metric GHCMetrics
-ghcMetricsWithLabels labels = Metric (return (GHCMetrics, concat <$> mapM ($ labels) ghcCollectors))
+ghcMetricsWithLabels labels = Metric (do
+  statsEnabled <-
+#if __GLASGOW_HASKELL__ < 804
+    getGCStatsEnabled
+#else
+    getRTSStatsEnabled
+#endif
+  if statsEnabled
+  then return (GHCMetrics, do
+        stats <-
+#if __GLASGOW_HASKELL__ < 804
+            getGCStats
+#else
+            getRTSStats
+#endif
+        concat <$> mapM (\f -> f labels stats) ghcCollectors
+    )
+  else return (GHCMetrics, return [])
+  )
 
 #if __GLASGOW_HASKELL__ < 804
-ghcCollectors :: [LabelPairs -> IO [SampleGroup]]
+ghcCollectors :: [LabelPairs -> GCStats -> IO [SampleGroup]]
 ghcCollectors = [
-        showCollector
+        \labelpairs gcstats -> do
+          sparkCount <- numSparks
+          showCollector
             "ghc_sparks"
             "The number of sparks in the local spark pool."
             GaugeType
-            numSparks
-    ,   showCollector
+            sparkCount
+            labelpairs
+    ,   \labelpairs gcstats -> do
+          numCapabilities <- getNumCapabilities
+          showCollector
             "ghc_capabilities"
             "The number of threads that can run truly simultaneously."
             GaugeType
-            getNumCapabilities
+            numCapabilities
+            labelpairs
     ,   statsCollector
             "ghc_allocated_bytes_total"
             "Total number of bytes allocated."
@@ -140,7 +166,7 @@ ghcCollectors = [
 
 #else
 
-ghcCollectors :: [LabelPairs -> IO [SampleGroup]]
+ghcCollectors :: [LabelPairs -> RTSStats -> IO [SampleGroup]]
 ghcCollectors = [
       statsCollector
             "ghc_gcs_total"
@@ -310,25 +336,18 @@ rtsTimeToSeconds = (/ 1e9) . fromIntegral
 
 #if __GLASGOW_HASKELL__ < 804
 statsCollector :: Show a
-               => Text -> Text -> SampleType -> (GCStats -> a) -> LabelPairs -> IO [SampleGroup]
-statsCollector name help sampleType stat labels = do
-    statsEnabled <- getGCStatsEnabled
-    if statsEnabled
-        then showCollector name help sampleType (stat <$> getGCStats) labels
-        else return []
+               => Text -> Text -> SampleType -> (GCStats -> a) -> LabelPairs -> GCStats -> IO [SampleGroup]
+statsCollector name help sampleType stat labels gcstats =
+    showCollector name help sampleType (stat gcstats) labels
 #else
 statsCollector :: Show a
-               => Text -> Text -> SampleType -> (RTSStats -> a) -> LabelPairs -> IO [SampleGroup]
-statsCollector name help sampleType stat labels = do
-    statsEnabled <- getRTSStatsEnabled
-    if statsEnabled
-        then showCollector name help sampleType (stat <$> getRTSStats) labels
-        else return []
+               => Text -> Text -> SampleType -> (RTSStats -> a) -> LabelPairs -> RTSStats -> IO [SampleGroup]
+statsCollector name help sampleType stat labels rtsStats =
+    showCollector name help sampleType (stat rtsStats) labels
 #endif
 
-showCollector :: Show a => Text -> Text -> SampleType -> IO a -> LabelPairs -> IO [SampleGroup]
-showCollector name help sampleType ioInt labels = do
-    value <- ioInt
+showCollector :: Show a => Text -> Text -> SampleType -> a -> LabelPairs -> IO [SampleGroup]
+showCollector name help sampleType value labels = do
     let info = Info name help
     let valueBS = BS.fromString $ show value
     return [SampleGroup info sampleType [Sample name labels valueBS]]
