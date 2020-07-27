@@ -1,7 +1,10 @@
 flags: {}
 packages:
-- prometheus-metrics-ghc/
-- wai-middleware-prometheus/
 - example/
-- prometheus-client/
-resolver: lts-11.2
+- prometheus-client
+- prometheus-metrics-ghc
+- prometheus-proc
+- wai-middleware-prometheus
+extra-deps:
+- unix-memory-0.1.2
+resolver: lts-12.14
