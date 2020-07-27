@@ -1,6 +1,8 @@
 # Change Log
 
-## Unreleased
+## HEAD
+
+## 1.0.1 -- 2020-07-26
 
 Expose the `Bucket` type
 

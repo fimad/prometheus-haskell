@@ -1,5 +1,11 @@
 # Change Log
 
+## HEAD
+
+## 1.0.1.1
+
+- Optimizations to measure GHC metrics with less polling.
+
 ## 1.0.1
 
 - Allow GHC metrics to be labeled via `ghcMetricsWithLabels`.
