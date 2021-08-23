@@ -41,6 +41,7 @@ library
     , clock
     , containers
     , deepseq
+    , primitive
     , mtl                >=2
     , stm                >=2.3
     , transformers
@@ -48,6 +49,7 @@ library
     , utf8-string
     , exceptions
     , text
+    , data-sketches
   ghc-options: -Wall
 
 test-suite doctest
@@ -83,6 +85,8 @@ test-suite spec
     , deepseq
     , exceptions
     , text
+    , primitive
+    , data-sketches
   ghc-options: -Wall
 
 benchmark bench

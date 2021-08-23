@@ -2,9 +2,6 @@
 
 module Prometheus.Metric.SummarySpec (
     spec
-
-,   prop_boundedRank
-,   prop_invariant
 ,   rankOf
 ) where
 
@@ -44,7 +41,6 @@ spec = describe "Prometheus.Metric.Summary" $ do
             m <- register $ summary (Info "name" "help") quantiles
             mapM_ (m `observe`) observations
             checkQuantiles m smallWindowSize =<< getQuantiles quantiles m
-    context "Maintains invariants" invariantTests
     where
       checkBadObservations observations =
         it ("computes quantiles correctly for " ++ show observations) $ do
@@ -116,7 +112,7 @@ checkQuantiles :: Summary
                -> Double
                -> [(Rational, Rational, Double)] -> IO ()
 checkQuantiles m windowSize values = do
-    estimator <- dumpEstimator m
+    -- estimator <- dumpEstimator m
     forM_ values $ \(q, e, actual) -> do
         let expected = fromIntegral $ (ceiling $ fromRat q * windowSize :: Int) - 1
         let minValue = expected - (fromRat e * windowSize)
@@ -127,9 +123,11 @@ checkQuantiles m windowSize values = do
                 ,   " was not within acceptable error range (", show e , "). "
                 ,   "Got ", show actual, ", but wanted ", show expected
                 ,   " (", show minValue, " <= v <= ", show maxValue, ")."
+                {-
                 ,   if estCount estimator <= 100
                         then "\nEstimator = " ++ show estimator
                         else ""
+                -}
                 ]
 
 quantiles :: [Quantile]
@@ -142,66 +140,6 @@ getQuantiles qs s = do
     return $ zipWith (\(q, e) (_, v) -> (q, e, v)) sortedQuantiles values
     where
         sortQuantiles = sortBy (\(a, _) (b, _) -> compare a b)
-
---------------------------------------------------------------------------------
--- QuickCheck tests
-
-invariantTests :: Spec
-invariantTests = do
-    it "Maintains g + d is bounded above by the invariant f" $
-        property prop_invariant
-    it "Compression maintains g + d is bounded above by the invariant f" $
-        property prop_invariantAfterCompress
-    it "Maintains that rank is bounded by r + g and r + g + d" $
-        property prop_boundedRank
-    it "Compression maintains that rank is bounded by r + g and r + g + d" $
-        property prop_boundedRankAfterCompress
-
-prop_invariant :: NonEmptyList Double -> Property
-prop_invariant (NonEmpty events) =
-    let estimator = estimatorAfterObserving events
-        rvgds  = rvgdsFromEstimator estimator
-    in  whenFail (putStrLn $ "[(R, V, G, D)] -> " ++ show rvgds) $
-        flip all rvgds $ \(r, _, g, d) ->
-        let f = invariant estimator (fromIntegral r)
-        in  fromIntegral (g + d) <= f
-
-prop_invariantAfterCompress :: NonEmptyList Double -> Property
-prop_invariantAfterCompress (NonEmpty events) =
-    let estimator = estimatorAfterObserving events
-        rvgds  = rvgdsFromEstimator $ compress estimator
-    in  whenFail (putStrLn $ "[(R, V, G, D)] -> " ++ show rvgds) $
-        flip all rvgds $ \(r, _, g, d) ->
-        let f = invariant estimator (fromIntegral r)
-        in  fromIntegral (g + d) <= f
-
-prop_boundedRank :: NonEmptyList Double -> Property
-prop_boundedRank (NonEmpty events) =
-    let rvgds = rvgdsFromEstimator $ estimatorAfterObserving events
-        vs    = map (\(_, v, _, _) -> v) rvgds
-    in  whenFail (putStrLn $ "[(R, V, G, D)] -> " ++ show rvgds) $
-        flip all rvgds $ \(r, v, g, d) ->
-        let (minRank, maxRank) = rankOf v vs
-        in  r + g <= maxRank && minRank <= r + g + d
-
-prop_boundedRankAfterCompress :: NonEmptyList Double -> Property
-prop_boundedRankAfterCompress (NonEmpty events) =
-    let rvgds = rvgdsFromEstimator $ estimatorAfterObserving events
-        vs    = map (\(_, v, _, _) -> v) rvgds
-    in  whenFail (putStrLn $ "[(R, V, G, D)] -> " ++ show rvgds) $
-        flip all rvgds $ \(r, v, g, d) ->
-        let (minRank, maxRank) = rankOf v vs
-        in  r + g <= maxRank && minRank <= r + g + d
-
-rvgdsFromEstimator :: Estimator -> [(Int64, Double, Int64, Int64)]
-rvgdsFromEstimator estimator = rvgds
-    where
-        items     = estItems estimator
-        rs        = scanl (+) 0 $ map itemG items
-        rvgds     = zipWith (\r (Item v g d) -> (r, v, g, d)) rs items
-
-estimatorAfterObserving :: [Double] -> Estimator
-estimatorAfterObserving = foldr insert (emptyEstimator [(0.5, 0)])
 
 -- | Return a tuple that describes the range of that an element's true rank can
 -- be in. For example, in the list [0, 0, 0, 1] the result for querying 0 will
