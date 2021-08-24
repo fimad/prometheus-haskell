@@ -25,7 +25,7 @@ library
       Prometheus.Metric.GHC
   build-depends:
       base               >=4.7 && <5
-    , prometheus-client  >=1.0.0 && <1.1
+    , prometheus-client  >=1.0.0 && <1.2
     , utf8-string        >=0.3
     , text
   ghc-options: -Wall

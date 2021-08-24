@@ -112,7 +112,6 @@ checkQuantiles :: Summary
                -> Double
                -> [(Rational, Rational, Double)] -> IO ()
 checkQuantiles m windowSize values = do
-    -- estimator <- dumpEstimator m
     forM_ values $ \(q, e, actual) -> do
         let expected = fromIntegral $ (ceiling $ fromRat q * windowSize :: Int) - 1
         let minValue = expected - (fromRat e * windowSize)
@@ -123,11 +122,6 @@ checkQuantiles m windowSize values = do
                 ,   " was not within acceptable error range (", show e , "). "
                 ,   "Got ", show actual, ", but wanted ", show expected
                 ,   " (", show minValue, " <= v <= ", show maxValue, ")."
-                {-
-                ,   if estCount estimator <= 100
-                        then "\nEstimator = " ++ show estimator
-                        else ""
-                -}
                 ]
 
 quantiles :: [Quantile]

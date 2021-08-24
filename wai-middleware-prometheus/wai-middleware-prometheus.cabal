@@ -29,7 +29,7 @@ library
     , clock
     , data-default
     , http-types
-    , prometheus-client  >=1.0.0 && <1.1
+    , prometheus-client  >=1.0.0 && <1.2
     , text               >=0.11
     , wai                >=3.0
   ghc-options: -Wall

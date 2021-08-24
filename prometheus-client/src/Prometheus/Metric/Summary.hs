@@ -1,8 +1,5 @@
 {-# language BangPatterns #-}
-{-# language DataKinds #-}
 {-# language OverloadedStrings #-}
-{-# language TypeApplications #-}
-{-# language TypeOperators #-}
 module Prometheus.Metric.Summary (
     Summary
 ,   Quantile
