@@ -44,7 +44,7 @@ instance NFData Summary where
 type Quantile = (Rational, Rational)
 
 determineK :: Quantile -> Maybe Word32
-determineK (rank_, acceptableError) = go 4
+determineK (rank_, acceptableError) = go 6
     where
         go k =
             let rse = relativeStandardError (fromIntegral k) (fromRational rank_) HighRanksAreAccurate 50000
