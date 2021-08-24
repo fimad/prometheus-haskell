@@ -2,7 +2,7 @@
 {-# language DataKinds #-}
 {-# language OverloadedStrings #-}
 {-# language TypeApplications #-}
-
+{-# language TypeOperators #-}
 module Prometheus.Metric.Summary (
     Summary
 ,   Quantile
@@ -24,11 +24,9 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Primitive
 import qualified Data.ByteString.UTF8 as BS
-import Data.Foldable (foldr')
-import Data.Int (Int64)
-import Data.Monoid ((<>))
 import qualified Data.Text as T
 import DataSketches.Quantiles.RelativeErrorQuantile
+import DataSketches.Quantiles.RelativeErrorQuantile.Types
 import qualified DataSketches.Quantiles.RelativeErrorQuantile as ReqSketch
 
 data Summary = MkSummary 
@@ -46,30 +44,31 @@ type Quantile = (Rational, Rational)
 -- quantiles. A reasonable set set of quantiles is provided by
 -- 'defaultQuantiles'.
 summary :: Info -> [Quantile] -> Metric Summary
-summary info quantiles = Metric $ do
+summary info quantiles_ = Metric $ do
     -- valueTVar <- STM.newTVarIO (emptyEstimator quantiles)
-    mv <- newMVar =<< mkReqSketch @6 HighRanksAreAccurate
-    let summary_ = MkSummary mv quantiles
+    rs <- mkReqSketch @6 HighRanksAreAccurate
+    mv <- newMVar (rs {criterion = (:<=)})
+    let summary_ = MkSummary mv quantiles_
     return (summary_, collectSummary info summary_)
 
 instance Observer Summary where
     -- | Adds a new observation to a summary metric.
-    observe s v = doIO $ withMVar (reqSketch s) (\s -> update s v)
+    observe s v = doIO $ withMVar (reqSketch s) (`update` v)
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
 getSummary :: MonadIO m => Summary -> m [(Rational, Double)]
-getSummary (MkSummary sketchVar quantiles) = liftIO $ withMVar sketchVar $ \sketch -> do
-  forM quantiles $ \qv -> 
+getSummary (MkSummary sketchVar quantiles_) = liftIO $ withMVar sketchVar $ \sketch -> do
+  forM quantiles_ $ \qv -> 
     (,) <$> pure (fst qv) <*> ReqSketch.quantile sketch (fromRational $ fst qv)
 
 collectSummary :: Info -> Summary -> IO [SampleGroup]
-collectSummary info (MkSummary sketchVar quantiles) = withMVar sketchVar $ \sketch -> do
+collectSummary info (MkSummary sketchVar quantiles_) = withMVar sketchVar $ \sketch -> do
     itemSum <- getSum sketch
-    count <- getN sketch
-    estimatedQuantileValues <- forM quantiles $ \qv -> 
+    count_ <- getN sketch
+    estimatedQuantileValues <- forM quantiles_ $ \qv -> 
       (,) <$> pure (fst qv) <*> ReqSketch.quantile sketch (toDouble $ fst qv)
     let sumSample = Sample (metricName info <> "_sum") [] (bsShow itemSum)
-    let countSample = Sample (metricName info <> "_count") [] (bsShow count)
+    let countSample = Sample (metricName info <> "_count") [] (bsShow count_)
     return [SampleGroup info SummaryType $ map toSample estimatedQuantileValues ++ [sumSample, countSample]]
     where
         bsShow :: Show s => s -> BS.ByteString
