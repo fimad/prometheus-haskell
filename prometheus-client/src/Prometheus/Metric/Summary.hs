@@ -35,7 +35,7 @@ data Summary = MkSummary
   }
 
 instance NFData Summary where
-  rnf (MkSummary a b) = a `seq` b `seq` ()
+  rnf (MkSummary a b) = a `seq` b `deepseq` ()
 
 
 type Quantile = (Rational, Rational)
