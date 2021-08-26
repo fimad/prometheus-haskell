@@ -40,6 +40,17 @@ instance NFData Summary where
 
 type Quantile = (Rational, Rational)
 
+-- | K is a parameter divisible by two, in the range 4-1024 used in the RelativeErrorQuantile algorithm to 
+-- determine how many items must be retained per compaction section. As the value increases, the accuracy
+-- of the sketch increases as well. This function iterates on the k value starting from 6 
+-- (conservative on space, but reasonably accurate) until it finds a K value that satisfies the specified 
+-- error bounds for the given quantile. Note: this algorithm maintains highest accuracy for the upper tail 
+-- of the quantile when passed the 'HighRanksAreAccurate', sampling out more items at lower ranks during 
+-- the compaction process. Thus, extremely tight error bounds on low quantile values may cause this 
+-- function to return 'Nothing'.
+--
+-- If another smart constructor was exposed for summary creation, specific k values & LowRanksAreAccurate
+-- could be used to refine accuracy settings to bias towards lower quantiles when retaining accurate samples.
 determineK :: Quantile -> Maybe Word32
 determineK (rank_, acceptableError) = go 6
     where
