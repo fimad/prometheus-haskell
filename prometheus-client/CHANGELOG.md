@@ -2,6 +2,11 @@
 
 ## HEAD
 
+## 1.1.0 -- 2021-08-26
+
+- Replaced Summary implementation with `data-sketches` which should result in
+  significant performance improvements.
+
 ## 1.0.1 -- 2020-07-26
 
 Expose the `Bucket` type

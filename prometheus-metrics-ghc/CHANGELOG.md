@@ -2,6 +2,10 @@
 
 ## HEAD
 
+## 1.0.1.2 -- 2021-08-26
+
+- Increase allowed prometheus-client version ranges.
+
 ## 1.0.1.1
 
 - Optimizations to measure GHC metrics with less polling.

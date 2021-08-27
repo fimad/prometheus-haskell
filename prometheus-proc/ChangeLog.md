@@ -1,3 +1,7 @@
+# 0.1.3.1 -- 2021-08-26
+
+* Increase allowed prometheus-client version ranges.
+
 # 0.1.3.0 -- 2020-06-17
 
 * Support base-4.14 and GHC 8.10.

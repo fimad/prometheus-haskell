@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.0.0.1
+
+- Increase allowed prometheus-client version ranges.
+
 ## 1.0.0
 
 - Supports prometheus-client-1.0.0

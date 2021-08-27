@@ -1,5 +1,5 @@
 name:                prometheus-metrics-ghc
-version:             1.0.1.1
+version:             1.0.1.2
 synopsis:
     Metrics exposing GHC runtime information for use with prometheus-client.
 description:
