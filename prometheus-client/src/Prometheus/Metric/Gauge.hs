@@ -29,9 +29,9 @@ instance NFData Gauge where
 
 -- | Create a new gauge metric with a given name and help string.
 gauge :: Info -> Metric Gauge
-gauge info = Metric $ do
+gauge info = metricIO $ do
     ioref <- IORef.newIORef 0
-    return (MkGauge ioref, collectGauge info ioref)
+    return $ MkGauge ioref <$ virtualGauge info (IORef.readIORef ioref)
 
 withGauge :: MonadMonitor m
           => Gauge
@@ -71,11 +71,22 @@ getGauge (MkGauge ioref) = liftIO $ IORef.readIORef ioref
 setGaugeToDuration :: (MonadIO m, MonadMonitor m) => Gauge -> m a -> m a
 setGaugeToDuration metric io = do
     (result, duration) <- timeAction io
-    setGauge metric duration 
+    setGauge metric duration
     return result
 
-collectGauge :: Info -> IORef.IORef Double -> IO [SampleGroup]
-collectGauge info c = do
-    value <- IORef.readIORef c
+collectGauge :: Info -> IO Double -> IO [SampleGroup]
+collectGauge info measure = do
+    value <- measure
     let sample = Sample (metricName info) [] (BS.fromString $ show value)
     return [SampleGroup info GaugeType [sample]]
+
+data VirtualGauge = VirtualGauge
+
+instance NFData VirtualGauge where
+  rnf VirtualGauge = ()
+
+-- | Create a new gauge metric. Useful to build a gauge backed by an external
+-- store. MORE EXPLAINING TO DO.
+virtualGauge :: Info -> IO Double -> Metric VirtualGauge
+virtualGauge info measure = Metric $ do
+    return (VirtualGauge, collectGauge info measure)
