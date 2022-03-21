@@ -1,5 +1,5 @@
 name:                prometheus-proc
-version:             0.1.3.1
+version:             0.1.4.0
 synopsis:            Export metrics from /proc for the current process
 homepage:            https://github.com/fimad/prometheus-haskell
 license:             BSD3
@@ -17,7 +17,7 @@ source-repository head
 
 library
   exposed-modules:     Prometheus.Metric.Proc
-  build-depends:       base >=4.10 && <4.15
+  build-depends:       base >=4.10 && <4.16
                      , directory >= 1.2.5.0 && < 1.4
                      , filepath >=1.4 && <1.5
                      , prometheus-client >= 1.0.0 && < 1.2
