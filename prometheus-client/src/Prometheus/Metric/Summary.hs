@@ -79,7 +79,7 @@ summary info quantiles_ = Metric $ do
 
 instance Observer Summary where
     -- | Adds a new observation to a summary metric.
-    observe s v = doIO $ withMVar (reqSketch s) (`ReqSketch.insert` v)
+    observe s v = doIO $ withMVarMasked (reqSketch s) (\rs -> rs `ReqSketch.insert` v)
 
 -- | Retrieves a list of tuples containing a quantile and its associated value.
 getSummary :: MonadIO m => Summary -> m [(Rational, Double)]
