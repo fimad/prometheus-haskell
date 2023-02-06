@@ -300,7 +300,7 @@ ghcCollectors = [
     , statsCollector
             "ghc_gcdetails_mem_in_use_bytes"
             "Total amount of memory in use by the RTS"
-            CounterType
+            GaugeType
             (gcdetails_mem_in_use_bytes . gc)
     , statsCollector
             "ghc_gcdetails_copied_bytes"
