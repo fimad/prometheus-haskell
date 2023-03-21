@@ -9,6 +9,7 @@ module Network.Wai.Middleware.Prometheus
   , Default.def
   , instrumentHandlerValue
   , instrumentHandlerValueWithFilter
+  , instrumentHandlerValueWithHistogramAndFilter
   , ignoreRawResponses
   , instrumentApp
   , instrumentIO
@@ -80,7 +81,16 @@ instrumentHandlerValueWithFilter ::
   -> (Wai.Request -> Text) -- ^ The function used to derive the "handler" value in Prometheus
   -> Wai.Application -- ^ The app to instrument
   -> Wai.Application -- ^ The instrumented app
-instrumentHandlerValueWithFilter resFilter f app req respond = do
+instrumentHandlerValueWithFilter =
+  instrumentHandlerValueWithHistogramAndFilter requestLatency
+
+instrumentHandlerValueWithHistogramAndFilter ::
+     Prom.Vector Prom.Label3 Prom.Histogram
+  -> (Wai.Response -> Maybe Wai.Response) -- ^ Response filter
+  -> (Wai.Request -> Text) -- ^ The function used to derive the "handler" value in Prometheus
+  -> Wai.Application -- ^ The app to instrument
+  -> Wai.Application -- ^ The instrumented app
+instrumentHandlerValueWithHistogramAndFilter histogram resFilter f app req respond = do
   start <- getTime Monotonic
   app req $ \res -> do
     case resFilter res of
@@ -89,7 +99,7 @@ instrumentHandlerValueWithFilter resFilter f app req respond = do
         end <- getTime Monotonic
         let method = Just $ decodeUtf8 (Wai.requestMethod req)
         let status = Just $ T.pack (show (HTTP.statusCode (Wai.responseStatus res')))
-        observeSeconds (f req) method status start end
+        observeSecondsWithHistogram histogram (f req) method status start end
     respond res
 
 -- | 'Wai.ResponseRaw' values have two parts: an action that can be executed to construct a
@@ -149,10 +159,21 @@ observeSeconds :: Text         -- ^ handler label
                -> TimeSpec     -- ^ start time
                -> TimeSpec     -- ^ end time
                -> IO ()
-observeSeconds handler method status start end = do
+observeSeconds = do
+  observeSecondsWithHistogram requestLatency
+
+-- | Record an event to the middleware metric.
+observeSecondsWithHistogram :: Prom.Vector Prom.Label3 Prom.Histogram
+                            -> Text         -- ^ handler label
+                            -> Maybe Text   -- ^ method
+                            -> Maybe Text   -- ^ status
+                            -> TimeSpec     -- ^ start time
+                            -> TimeSpec     -- ^ end time
+                            -> IO ()
+observeSecondsWithHistogram histograms handler method status start end = do
     let latency :: Double
         latency = fromRational $ toRational (toNanoSecs (end `diffTimeSpec` start) % 1000000000)
-    Prom.withLabel requestLatency
+    Prom.withLabel histograms
                    (handler, fromMaybe "" method, fromMaybe "" status)
                    (flip Prom.observe latency)
 
