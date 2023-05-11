@@ -1,3 +1,8 @@
+# 0.1.5.0 -- 2023-05-11
+
+* Support base-4.17 and (GHC 9.2 & GHC 9.4)
+* Support text-2.0
+
 # 0.1.4.0 -- 2022-03-21
 
 * Support base-4.15 and GHC 9.0.
