@@ -2,6 +2,10 @@
 
 ## HEAD
 
+## 1.1.1 -- 2023-08-01
+
+- Support `mtl-2.3`
+
 ## 1.1.0 -- 2021-08-26
 
 - Replaced Summary implementation with `data-sketches` which should result in
