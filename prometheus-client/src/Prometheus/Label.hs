@@ -32,6 +32,9 @@ type Label0 = ()
 instance Label () where
     labelPairs () () = []
 
+instance Label [Text] where
+    labelPairs key value = Prelude.zip key value
+
 type Label1 = Text
 
 instance Label Text where
