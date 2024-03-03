@@ -1,3 +1,7 @@
+# HEAD
+
+* Relax bounds on base, unix, and text to support GHC 9.6 and 9.8
+
 # 0.1.5.0 -- 2023-05-11
 
 * Support base-4.17 and (GHC 9.2 & GHC 9.4)
