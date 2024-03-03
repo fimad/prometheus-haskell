@@ -1,0 +1,86 @@
+# https://github.com/haskell/actions/tree/main/setup
+
+name: build
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Stack resolver ${{ matrix.stackage-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        stackage-version:
+          - stack.yaml
+          - .ci/stack-nightly.yaml
+          - .ci/stack-lts-22.yaml
+          - .ci/stack-lts-21.yaml
+          - .ci/stack-lts-19.yaml
+          - .ci/stack-lts-16.yaml
+          - .ci/stack-lts-12.yaml
+          - .ci/stack-lts-3.yaml
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: haskell-actions/setup@v2
+        name: Set up stack ${{ matrix.stackage-version }}
+        id: setup
+        with:
+          enable-stack: true
+          stack-version: latest
+
+      - uses: actions/cache/restore@v3
+        name: Restore cached ~/.stack
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-stack-global-${{ hashFiles(matrix.stackage-version) }}-${{ hashFiles('**/*.cabal') }}-version-${{ matrix.stackage-version }}
+          restore-keys: |
+            ${{ runner.os }}-stack-global-
+      - uses: actions/cache/restore@v3
+        name: Restore cached .stack-work
+        with:
+          path: .stack-work
+          key: ${{ runner.os }}-stack-work-${{ hashFiles(matrix.stackage-version) }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/*.hs') }}-version-${{ matrix.stackage-version }}
+          restore-keys: |
+            ${{ runner.os }}-stack-work-
+
+      - name: Install dependencies
+        run: stack build --stack-yaml ${{ matrix.stackage-version }} --dependencies-only --test --bench
+
+      # Cache dependencies already here, so that we do not have to rebuild them should the subsequent steps fail.
+
+      - uses: actions/cache/save@v3
+        name: Cache ~/.stack
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-stack-global-${{ hashFiles(matrix.stackage-version) }}-${{ hashFiles('**/*.cabal') }}-version-${{ matrix.stackage-version }}
+          restore-keys: |
+            ${{ runner.os }}-stack-global-
+      - uses: actions/cache/save@v3
+        name: Cache .stack-work
+        with:
+          path: .stack-work
+          key: ${{ runner.os }}-stack-work-${{ hashFiles(matrix.stackage-version) }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/*.hs') }}-version-${{ matrix.stackage-version }}
+          restore-keys: |
+            ${{ runner.os }}-stack-work-
+
+      - name: Build
+        run: stack build --stack-yaml ${{ matrix.stackage-version }}
+
+      - name: Run tests
+        run: stack test --stack-yaml ${{ matrix.stackage-version }}
+
+      - name: Run benchmarks
+        run: stack bench --stack-yaml ${{ matrix.stackage-version }}
+
+      - name: Build documentation
+        run: stack haddock --stack-yaml ${{ matrix.stackage-version }}

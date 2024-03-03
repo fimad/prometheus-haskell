@@ -2,4 +2,6 @@ dist/
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.config
-/.stack-work
+.stack-work
+*/*.yaml.lock
+.devcontainer
