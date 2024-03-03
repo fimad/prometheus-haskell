@@ -3,8 +3,8 @@ packages:
 - ../example/
 - ../prometheus-client
 - ../prometheus-metrics-ghc
+- ../prometheus-proc
 - ../wai-middleware-prometheus
 extra-deps:
-- atomic-primops-0.8.2
-- clock-0.8
-resolver: lts-2.22
+- unix-memory-0.1.2
+resolver: nightly-2024-03-01

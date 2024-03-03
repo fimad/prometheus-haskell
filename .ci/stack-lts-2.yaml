@@ -1,0 +1,11 @@
+flags: {}
+packages:
+- ../example/
+- ../prometheus-client
+- ../prometheus-metrics-ghc
+- ../wai-middleware-prometheus
+extra-deps:
+- atomic-primops-0.8.2
+- clock-0.8
+- data-sketches-0.3.1.0
+resolver: lts-2.22
