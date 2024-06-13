@@ -14,6 +14,10 @@ import Control.Applicative ((<$>))
 import Control.Monad.IO.Class
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Control.Concurrent.STM as STM
+import qualified Data.Map as Map
+import qualified Data.Map.Internal as Map
+import Prometheus.Metric.Vector
+import Prometheus.Label
 
 
 -- $setup
@@ -23,10 +27,14 @@ import qualified Control.Concurrent.STM as STM
 -- | A 'Registry' is a list of all registered metrics, currently represented by
 -- their sampling functions.
 type Registry = [IO [SampleGroup]]
+type VectorRegistry l m = [IO [(l,(Vector l m))]]
 
 {-# NOINLINE globalRegistry #-}
 globalRegistry :: STM.TVar Registry
 globalRegistry = unsafePerformIO $ STM.newTVarIO []
+
+vectorRegistry :: STM.TVar (VectorRegistry l m)
+vectorRegistry = unsafePerformIO $ STM.newTVarIO []
 
 -- | Registers a metric with the global metric registry.
 register :: MonadIO m => Metric s -> m s
@@ -35,6 +43,18 @@ register (Metric mk) = liftIO $ do
     let addToRegistry = (sampleGroups :)
     liftIO $ STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
     return metric
+
+registerVector :: (MonadIO m,Label l) => l -> Metric mm -> m (Vector l mm)
+registerVector l metric = do
+    cv <- collectVectors
+    let flag = Map.lookup l cv
+    case flag of
+      Nothing -> do
+                    vec <- register $ vector l $ metric
+                    let addToVecR = (pure [(l,vec)] :)
+                    liftIO $ STM.atomically $ STM.modifyTVar' vectorRegistry addToVecR
+                    pure vec
+      Just cv -> pure cv
 
 -- | Registers a metric with the global metric registry.
 registerIO :: MonadIO m => m (Metric s) -> m s
@@ -76,3 +96,9 @@ collectMetrics :: MonadIO m => m [SampleGroup]
 collectMetrics = liftIO $ do
     registry <- STM.atomically $ STM.readTVar globalRegistry
     concat <$> sequence registry
+
+collectVectors :: (MonadIO m, Label l) => m (Map.Map l (Vector l mm))
+collectVectors = liftIO $ do
+    registry <- STM.atomically $ STM.readTVar vectorRegistry
+    (Prelude.foldl (\acc v -> Map.insert (fst v) (snd v) acc) Map.empty) <$> concat <$> sequence registry
+
