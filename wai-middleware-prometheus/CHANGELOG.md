@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.0.1.0
+
+- Add `instrumentHandlerValueWithHistogramAndFilter` API which allows specifying
+  a specific histogram to log latencies to.
+
 ## 1.0.0.1
 
 - Increase allowed prometheus-client version ranges.
