@@ -1,6 +1,5 @@
 {-# language BangPatterns #-}
 {-# language OverloadedStrings #-}
-{-# language ScopedTypeVariables #-}
 
 module Prometheus.Metric.Histogram (
     Histogram
@@ -106,7 +105,6 @@ getHistogram :: MonadIO m => Histogram -> m (Map.Map Bucket Int)
 getHistogram (MkHistogram bucketsTVar) =
     liftIO $ histCountsPerBucket <$> STM.atomically (STM.readTVar bucketsTVar)
 
-
 -- | Record an observation.
 insert :: Double -> BucketCounts -> BucketCounts
 insert value bucketCounts = insertWithExemplar value [] bucketCounts 
@@ -129,7 +127,7 @@ insertWithExemplar value newLabelPairs BucketCounts { histTotal = total, histCou
 collectHistogram :: Info -> STM.TVar BucketCounts -> IO [SampleGroup]
 collectHistogram info bucketCounts = STM.atomically $ do
     BucketCounts total count counts labels <- STM.readTVar bucketCounts
-    let sumSample :: Sample = Sample (name <> "_sum") [] (bsShow total) []
+    let sumSample = Sample (name <> "_sum") [] (bsShow total) []
     let countSample = Sample (name <> "_count") [] (bsShow count) []
     let infSample = Sample (name <> "_bucket") [(bucketLabel, "+Inf")] (bsShow count) []
     let upperBoundAndCount = (cumulativeSum (Map.toAscList counts))
