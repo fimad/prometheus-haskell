@@ -88,6 +88,8 @@ instance Observer Histogram where
 -- Typically the values tracked are "trace_id" and "span_id".
 --
 -- This feature is experimental and must be [enabled on the Prometheus server](https://prometheus.io/docs/prometheus/latest/feature_flags/).
+--
+-- > withLabel incomingHttpRequestSeconds "Signup_POST" (`observeWithExemplar` 1.23 [("trace_id", "12345"), ("span_id", "67890")])
 observeWithExemplar :: Histogram -> Double -> LabelPairs -> IO ()
 observeWithExemplar h v lp = withHistogram h (insertWithExemplar v lp)
 
@@ -135,8 +137,8 @@ collectHistogram info bucketCounts = STM.atomically $ do
         samples = map toSample (zip upperBoundAndCount exemplarLabelPairs)
     return [SampleGroup info HistogramType $ samples ++ [infSample, sumSample, countSample]]
     where
-        toSample ((upperBound, count'), labelPairs) =
-            Sample (name <> "_bucket") [(bucketLabel, formatFloat upperBound)] (bsShow count') labelPairs
+        toSample ((upperBound, count'), exemplarLabelPairs) =
+            Sample (name <> "_bucket") [(bucketLabel, formatFloat upperBound)] (bsShow count') exemplarLabelPairs
         name = metricName info
 
         -- We don't particularly want scientific notation, so force regular

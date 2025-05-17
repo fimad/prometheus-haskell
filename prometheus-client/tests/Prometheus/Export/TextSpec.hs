@@ -73,7 +73,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
       it "renders histograms with exemplars" $ do
             m <- register $ histogram (Info "metric" "help") defaultBuckets
             observeWithExemplar m 1.0 [("trace_id", "1")]
-            observe m 1.0
+            observeWithExemplar m 1.0 [("trace_id", "2")]
             observe m 1.0
             result <- exportMetricsAsText
             result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
@@ -86,7 +86,7 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "metric_bucket{le=\"0.1\"} 0"
                 ,   "metric_bucket{le=\"0.25\"} 0"
                 ,   "metric_bucket{le=\"0.5\"} 0"
-                ,   "metric_bucket{le=\"1.0\"} 3 # {trace_id=\"1\"}"
+                ,   "metric_bucket{le=\"1.0\"} 3 # {trace_id=\"2\"}"
                 ,   "metric_bucket{le=\"2.5\"} 3"
                 ,   "metric_bucket{le=\"5.0\"} 3"
                 ,   "metric_bucket{le=\"10.0\"} 3"

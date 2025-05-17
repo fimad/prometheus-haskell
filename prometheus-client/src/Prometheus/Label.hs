@@ -14,8 +14,6 @@ module Prometheus.Label (
 ,   Label7
 ,   Label8
 ,   Label9
-,   traceLabel
-,   traceAndSpanLabels
 ) where
 
 import Data.Text
@@ -90,9 +88,3 @@ instance (a ~ Text, b ~ a, c ~ a, d ~ a, e ~ a, f ~ a, g ~ a, h ~ a, i ~ a) => L
                (v1, v2, v3, v4, v5, v6, v7, v8, v9) =
             [(k1, v1), (k2, v2), (k3, v3), (k4, v4), (k5, v5), (k6, v6),
              (k7, v7), (k8, v8), (k9, v9)]
-
-traceLabel :: Text -> LabelPairs
-traceLabel t = [("trace_id", t)]
-
-traceAndSpanLabels :: Text -> Text -> LabelPairs
-traceAndSpanLabels t s = [("trace_id", t), ("span_id", s)]
