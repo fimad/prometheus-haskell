@@ -67,8 +67,8 @@ collectVector keys ioref = do
         adjustSamples labels (SampleGroup info ty samples) =
             SampleGroup info ty (map (prependLabels labels) samples)
 
-        prependLabels l (Sample name labels value) =
-            Sample name (labelPairs keys l ++ labels) value
+        prependLabels l (Sample name labels value exemplarLabelPairs) =
+            Sample name (labelPairs keys l ++ labels) value exemplarLabelPairs
 
         joinSamples []                      = []
         joinSamples s@(SampleGroup i t _:_) = [SampleGroup i t (extract s)]

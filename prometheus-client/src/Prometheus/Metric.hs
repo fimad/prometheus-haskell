@@ -32,9 +32,9 @@ instance Show SampleType where
     show UntypedType   = "untyped"
 
 -- | A single value recorded at a moment in time. The sample type contains the
--- name of the sample, a list of labels and their values, and the value encoded
--- as a ByteString.
-data Sample = Sample Text LabelPairs BS.ByteString
+-- name of the sample, a list of labels and their values, the value encoded
+-- as a ByteString, and an exemplar (histogram only).
+data Sample = Sample Text LabelPairs BS.ByteString LabelPairs
     deriving (Show)
 
 -- | A Sample group is a list of samples that is tagged with meta data

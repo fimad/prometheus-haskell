@@ -123,6 +123,7 @@ module Prometheus (
 ,   exponentialBuckets
 ,   linearBuckets
 ,   getHistogram
+,   observeWithExemplar
 
 -- ** Vector
 --

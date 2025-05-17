@@ -93,8 +93,8 @@ collectSummary info (MkSummary sketchVar quantiles_) = withMVar sketchVar $ \ske
     count_ <- ReqSketch.count sketch
     estimatedQuantileValues <- forM quantiles_ $ \qv ->
       (,) <$> pure (fst qv) <*> ReqSketch.quantile sketch (toDouble $ fst qv)
-    let sumSample = Sample (metricName info <> "_sum") [] (bsShow itemSum)
-    let countSample = Sample (metricName info <> "_count") [] (bsShow count_)
+    let sumSample = Sample (metricName info <> "_sum") [] (bsShow itemSum) []
+    let countSample = Sample (metricName info <> "_count") [] (bsShow count_) []
     return [SampleGroup info SummaryType $ map toSample estimatedQuantileValues ++ [sumSample, countSample]]
     where
         bsShow :: Show s => s -> BS.ByteString
@@ -102,8 +102,8 @@ collectSummary info (MkSummary sketchVar quantiles_) = withMVar sketchVar $ \ske
 
         toSample :: (Rational, Double) -> Sample
         toSample (q, estimatedValue) =
-            Sample (metricName info) [("quantile", T.pack . show $ toDouble q)] $
-                bsShow estimatedValue
+            Sample (metricName info) [("quantile", T.pack . show $ toDouble q)] 
+                (bsShow estimatedValue) []
 
         toDouble :: Rational -> Double
         toDouble = fromRational

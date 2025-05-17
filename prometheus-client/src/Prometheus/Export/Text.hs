@@ -63,17 +63,22 @@ exportSamples samples =
   mconcat [ exportSample s <> Build.charUtf8 '\n' | s <- samples ]
 
 exportSample :: Sample -> Build.Builder
-exportSample (Sample name labels value) =
+exportSample (Sample name labels value exemplarLabelPairs) =
   Build.byteString (T.encodeUtf8 name)
-    <> (case labels of
+    <> buildLabelPairs labels
+    <> Build.charUtf8 ' '
+    <> Build.byteString value
+    <> case exemplarLabelPairs of
+         [] -> mempty
+         xs -> (Build.byteString " # ") <> buildLabelPairs exemplarLabelPairs
+
+  where buildLabelPairs labelPairs = (case labelPairs of
          [] -> mempty
          l:ls ->
            Build.charUtf8 '{'
              <> exportLabel l
              <> mconcat [ Build.charUtf8 ',' <> exportLabel l' | l' <- ls ]
              <> Build.charUtf8 '}')
-    <> Build.charUtf8 ' '
-    <> Build.byteString value
 
 exportLabel :: (Text, Text) -> Build.Builder
 exportLabel (key, value) =
