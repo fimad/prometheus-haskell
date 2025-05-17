@@ -130,7 +130,7 @@ collectHistogram info bucketCounts = STM.atomically $ do
     let sumSample = Sample (name <> "_sum") [] (bsShow total) []
     let countSample = Sample (name <> "_count") [] (bsShow count) []
     let infSample = Sample (name <> "_bucket") [(bucketLabel, "+Inf")] (bsShow count) []
-    let upperBoundAndCount = (cumulativeSum (Map.toAscList counts))
+    let upperBoundAndCount = cumulativeSum (Map.toAscList counts)
         exemplarLabelPairs = map snd (Map.toAscList labels)
         samples = map toSample (zip upperBoundAndCount exemplarLabelPairs)
     return [SampleGroup info HistogramType $ samples ++ [infSample, sumSample, countSample]]

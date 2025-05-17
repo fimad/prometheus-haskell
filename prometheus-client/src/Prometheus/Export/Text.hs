@@ -68,17 +68,17 @@ exportSample (Sample name labels value exemplarLabelPairs) =
     <> buildLabelPairs labels
     <> Build.charUtf8 ' '
     <> Build.byteString value
-    <> case exemplarLabelPairs of
-         [] -> mempty
-         xs -> (Build.byteString " # ") <> buildLabelPairs exemplarLabelPairs
+    <> if null exemplarLabelPairs 
+         then mempty 
+         else Build.byteString " # " <> buildLabelPairs exemplarLabelPairs
 
-  where buildLabelPairs labelPairs = (case labelPairs of
+  where buildLabelPairs labelPairs = case labelPairs of
          [] -> mempty
          l:ls ->
            Build.charUtf8 '{'
              <> exportLabel l
              <> mconcat [ Build.charUtf8 ',' <> exportLabel l' | l' <- ls ]
-             <> Build.charUtf8 '}')
+             <> Build.charUtf8 '}'
 
 exportLabel :: (Text, Text) -> Build.Builder
 exportLabel (key, value) =
