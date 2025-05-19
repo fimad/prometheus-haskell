@@ -15,6 +15,8 @@ module Network.Wai.Middleware.Prometheus
   , instrumentIO
   , observeSeconds
   , metricsApp
+  , metricsAppWithFormat
+  , ExportFormat(..)
   ) where
 
 import qualified Data.Default as Default
@@ -29,6 +31,12 @@ import qualified Network.Wai.Internal as Wai (Response(ResponseRaw))
 import qualified Prometheus as Prom
 import System.Clock (Clock(..), TimeSpec, diffTimeSpec, getTime, toNanoSecs)
 
+-- | What content type to export data in.
+-- These formats are nearly identical; the only practical difference
+-- is that OpenMetrics supports exemplars and requires this content-type header:
+-- @application/openmetrics-text; version=1.0.0; charset=utf-8@
+data ExportFormat = PrometheusText | OpenMetricsOneZeroZero
+  deriving (Show, Eq, Ord)
 
 -- | Settings that control the behavior of the Prometheus middleware.
 data PrometheusSettings = PrometheusSettings {
@@ -44,6 +52,8 @@ data PrometheusSettings = PrometheusSettings {
         -- ^ Whether the default instrumentation should be applied to the
         -- middleware that serves the metrics endpoint. The default value is
         -- True.
+    ,   prometheusExportFormat :: ExportFormat
+        -- ^ Which format to export metrics in. The default value is PrometheusText.
     }
 
 instance Default.Default PrometheusSettings where
@@ -51,6 +61,7 @@ instance Default.Default PrometheusSettings where
         prometheusEndPoint             = ["metrics"]
     ,   prometheusInstrumentApp        = True
     ,   prometheusInstrumentPrometheus = True
+    ,   prometheusExportFormat         = PrometheusText
     }
 
 {-# NOINLINE requestLatency #-}
@@ -187,8 +198,8 @@ prometheus PrometheusSettings{..} app req respond =
         -- "prometheus" can be confused with actual prometheus.
     then
       if prometheusInstrumentPrometheus
-        then instrumentApp "prometheus" (const respondWithMetrics) req respond
-        else respondWithMetrics respond
+        then instrumentApp "prometheus" (const (respondWithMetrics prometheusExportFormat)) req respond
+        else respondWithMetrics prometheusExportFormat respond
     else
       if prometheusInstrumentApp
         then instrumentApp "app" app req respond
@@ -196,14 +207,23 @@ prometheus PrometheusSettings{..} app req respond =
 
 
 -- | WAI Application that serves the Prometheus metrics page regardless of
--- what the request is.
+-- what the request is. Uses the Prometheus text format.
 metricsApp :: Wai.Application
-metricsApp = const respondWithMetrics
+metricsApp = const (respondWithMetrics PrometheusText)
 
-respondWithMetrics :: (Wai.Response -> IO Wai.ResponseReceived)
+-- | WAI Application that serves the Prometheus metrics page regardless of
+-- what the request is.
+metricsAppWithFormat :: ExportFormat -> Wai.Application
+metricsAppWithFormat format = const (respondWithMetrics format)
+
+respondWithMetrics :: ExportFormat -> (Wai.Response -> IO Wai.ResponseReceived)
                    -> IO Wai.ResponseReceived
-respondWithMetrics respond = do
-    metrics <- Prom.exportMetricsAsText
-    respond $ Wai.responseLBS HTTP.status200 headers metrics
+respondWithMetrics format respond = do
+    metrics <- case format of
+      PrometheusText -> Prom.exportMetricsAsText
+      OpenMetricsOneZeroZero -> Prom.exportMetricsAsOpenMetrics1
+    respond $ Wai.responseLBS HTTP.status200 [(HTTP.hContentType, contentType)] metrics
     where
-        headers = [(HTTP.hContentType, "text/plain; version=0.0.4")]
+        contentType = case format of
+          PrometheusText -> "text/plain; version=0.0.4"
+          OpenMetricsOneZeroZero -> "application/openmetrics-text; version=1.0.0; charset=utf-8"
