@@ -172,7 +172,7 @@ metric metricName metricHelp metricType value =
         metricName
         []
         ( fromString ( show value ) )
-        []
+        Nothing
     ]
 
 
