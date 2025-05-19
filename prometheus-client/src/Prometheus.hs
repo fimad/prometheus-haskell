@@ -203,7 +203,7 @@ module Prometheus (
 -- >>> newtype CPUTime = MkCPUTime ()
 -- >>> let info = Info "cpu_time" "The current CPU time"
 -- >>> let toValue = Data.ByteString.UTF8.fromString . show
--- >>> let toSample x = Sample "cpu_time" [] (toValue x) []
+-- >>> let toSample x = Sample "cpu_time" [] (toValue x) Nothing
 -- >>> let toSampleGroup = (:[]) . SampleGroup info GaugeType . (:[]) . toSample
 -- >>> let collectCPUTime = fmap toSampleGroup getCPUTime
 -- >>> let cpuTimeMetric = Metric (return (MkCPUTime (), collectCPUTime))
