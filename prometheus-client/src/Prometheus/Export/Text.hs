@@ -17,7 +17,7 @@ import Data.Monoid ((<>), mempty, mconcat)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-
+import System.Clock
 
 -- $setup
 -- >>> :module +Prometheus
@@ -85,16 +85,33 @@ exportSamples samples =
   mconcat [ exportSample s <> Build.charUtf8 '\n' | s <- samples ]
 
 exportSample :: Sample -> Build.Builder
-exportSample (Sample name labels value exemplarLabelPairs) =
+exportSample (Sample name labels value mExemplar) =
   Build.byteString (T.encodeUtf8 name)
     <> buildLabelPairs labels
     <> Build.charUtf8 ' '
     <> Build.byteString value
-    <> if null exemplarLabelPairs 
-         then mempty 
-         else Build.byteString " # " <> buildLabelPairs exemplarLabelPairs
+    <> case mExemplar of
+         Nothing -> mempty
+         Just exemplar -> encodeExemplar exemplar
 
-  where buildLabelPairs labelPairs = case labelPairs of
+  where 
+        encodeExemplar :: SampleExemplar -> Build.Builder
+        encodeExemplar (SampleExemplar labelPairs exemplarValue mTimestamp) = 
+             Build.byteString " # "
+          <> buildLabelPairs labelPairs
+          <> Build.charUtf8 ' '
+          <> Build.byteString exemplarValue
+          <> case mTimestamp of
+               Nothing -> mempty
+               Just timestamp -> Build.charUtf8 ' ' <> encodeTimespec timestamp
+
+        encodeTimespec :: TimeSpec -> Build.Builder
+        encodeTimespec timespec = 
+          Build.int64Dec (sec timespec) 
+          <> Build.charUtf8 '.'
+          <> Build.int64Dec (nsec timespec)
+
+        buildLabelPairs labelPairs = case labelPairs of
          [] -> mempty
          l:ls ->
            Build.charUtf8 '{'

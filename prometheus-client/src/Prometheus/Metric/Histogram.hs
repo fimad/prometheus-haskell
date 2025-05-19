@@ -1,5 +1,6 @@
 {-# language BangPatterns #-}
 {-# language OverloadedStrings #-}
+{-# language RecordWildCards #-}
 
 module Prometheus.Metric.Histogram (
     Histogram
@@ -34,6 +35,7 @@ import Data.Monoid ((<>))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Numeric (showFFloat)
+import System.Clock
 
 -- | A histogram. Counts the number of observations that fall within the
 -- specified buckets.
@@ -54,6 +56,12 @@ histogram info buckets = Metric $ do
 -- | Upper-bound for a histogram bucket.
 type Bucket = Double
 
+data HistogramExemplar = HistogramExemplar {
+    histExemplarLabelPairs :: LabelPairs
+,   histExemplarValue :: !Double
+,   histExemplarTimestamp :: !(Maybe TimeSpec)
+} deriving (Show, Eq, Ord)
+
 -- | Current state of a histogram.
 data BucketCounts = BucketCounts {
     -- | The sum of all the observations.
@@ -64,12 +72,12 @@ data BucketCounts = BucketCounts {
     -- value is the number of observations less-than-or-equal-to
     -- that upper bound, but greater than the next lowest upper bound.
 ,   histCountsPerBucket :: !(Map.Map Bucket Int)
-,   histBucketLabels :: !(Map.Map Bucket LabelPairs)
+,   histBucketExemplars :: !(Map.Map Bucket (Maybe HistogramExemplar))
 } deriving (Show, Eq, Ord)
 
 emptyCounts :: [Bucket] -> BucketCounts
 emptyCounts buckets
-    | isStrictlyIncreasing buckets = BucketCounts 0 0 (Map.fromList (zip buckets (repeat 0))) (Map.fromList (zip buckets (repeat [])))
+    | isStrictlyIncreasing buckets = BucketCounts 0 0 (Map.fromList (zip buckets (repeat 0))) (Map.fromList (zip buckets (repeat Nothing)))
     | otherwise = error ("Histogram buckets must be in increasing order, got: " ++ show buckets)
     where
          isStrictlyIncreasing xs = and (zipWith (<) xs (tail xs))
@@ -89,8 +97,8 @@ instance Observer Histogram where
 -- This feature is experimental and must be [enabled on the Prometheus server](https://prometheus.io/docs/prometheus/latest/feature_flags/).
 --
 -- > withLabel incomingHttpRequestSeconds "Signup_POST" (`observeWithExemplar` 1.23 [("trace_id", "12345"), ("span_id", "67890")])
-observeWithExemplar :: Histogram -> Double -> LabelPairs -> IO ()
-observeWithExemplar h v lp = withHistogram h (insertWithExemplar v lp)
+observeWithExemplar :: Histogram -> Double -> HistogramExemplar -> IO ()
+observeWithExemplar h v exemplar = withHistogram h (insertWithExemplar v (Just exemplar))
 
 -- | Transform the contents of a histogram.
 withHistogram :: MonadMonitor m
@@ -107,36 +115,36 @@ getHistogram (MkHistogram bucketsTVar) =
 
 -- | Record an observation.
 insert :: Double -> BucketCounts -> BucketCounts
-insert value bucketCounts = insertWithExemplar value [] bucketCounts 
+insert value bucketCounts = insertWithExemplar value Nothing bucketCounts 
 
-insertWithExemplar :: Double -> LabelPairs -> BucketCounts -> BucketCounts
-insertWithExemplar value newLabelPairs BucketCounts { histTotal = total, histCount = count, histCountsPerBucket = counts, histBucketLabels = existingLabelMap } =
+insertWithExemplar :: Double -> (Maybe HistogramExemplar) -> BucketCounts -> BucketCounts
+insertWithExemplar value mHistogramExemplar BucketCounts { histTotal = total, histCount = count, histCountsPerBucket = counts, histBucketExemplars = existingExemplarMap } =
     let updatedValues = case Map.lookupGE value counts of
                 Nothing -> counts
                 Just (upperBound, _) -> Map.adjust (+1) upperBound counts
 
-        updatedLabels = case newLabelPairs of 
-            [] -> existingLabelMap
-            _xs -> case Map.lookupGE value counts of
-                Nothing -> existingLabelMap
-                Just (upperBound, _) -> Map.insert upperBound newLabelPairs existingLabelMap
+        updatedLabels = case mHistogramExemplar of 
+            Nothing -> existingExemplarMap
+            Just newExemplar -> case Map.lookupGE value counts of
+                Nothing -> existingExemplarMap
+                Just (upperBound, _) -> Map.insert upperBound (Just newExemplar) existingExemplarMap
 
     in BucketCounts (total + value) (count + 1) updatedValues updatedLabels
 
 -- | Collect the current state of a histogram.
 collectHistogram :: Info -> STM.TVar BucketCounts -> IO [SampleGroup]
 collectHistogram info bucketCounts = STM.atomically $ do
-    BucketCounts total count counts labels <- STM.readTVar bucketCounts
-    let sumSample = Sample (name <> "_sum") [] (bsShow total) []
-    let countSample = Sample (name <> "_count") [] (bsShow count) []
-    let infSample = Sample (name <> "_bucket") [(bucketLabel, "+Inf")] (bsShow count) []
+    BucketCounts total count counts mHistExemplarMap <- STM.readTVar bucketCounts
+    let sumSample = Sample (name <> "_sum") [] (bsShow total) Nothing
+    let countSample = Sample (name <> "_count") [] (bsShow count) Nothing
+    let infSample = Sample (name <> "_bucket") [(bucketLabel, "+Inf")] (bsShow count) Nothing
     let upperBoundAndCount = cumulativeSum (Map.toAscList counts)
-        exemplarLabelPairs = map snd (Map.toAscList labels)
-        samples = map toSample (zip upperBoundAndCount exemplarLabelPairs)
+        mHistExemplars = map snd (Map.toAscList mHistExemplarMap)
+        samples = map toSample (zip upperBoundAndCount mHistExemplars)
     return [SampleGroup info HistogramType $ samples ++ [infSample, sumSample, countSample]]
     where
-        toSample ((upperBound, count'), exemplarLabelPairs) =
-            Sample (name <> "_bucket") [(bucketLabel, formatFloat upperBound)] (bsShow count') exemplarLabelPairs
+        toSample ((upperBound, count'), mHistExemplar) =
+            Sample (name <> "_bucket") [(bucketLabel, formatFloat upperBound)] (bsShow count') (histExemlarToSampleExemplar <$> mHistExemplar)
         name = metricName info
 
         -- We don't particularly want scientific notation, so force regular
@@ -147,6 +155,10 @@ collectHistogram info bucketCounts = STM.atomically $ do
 
         bsShow :: Show s => s -> BS.ByteString
         bsShow = BS.fromString . show
+
+        histExemlarToSampleExemplar :: HistogramExemplar -> SampleExemplar
+        histExemlarToSampleExemplar HistogramExemplar{..} = 
+            SampleExemplar histExemplarLabelPairs (bsShow histExemplarValue) histExemplarTimestamp
 
 -- | The label that defines the upper bound of a bucket of a histogram. @"le"@
 -- is short for "less than or equal to".
