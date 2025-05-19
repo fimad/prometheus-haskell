@@ -10,6 +10,7 @@ module Prometheus.Metric.Histogram (
 ,   exponentialBuckets
 ,   linearBuckets
 ,   observeWithExemplar
+,   ExemplarMetadata(..)
 
 -- * Exported for testing
 ,   BucketCounts(..)
@@ -56,6 +57,9 @@ histogram info buckets = Metric $ do
 -- | Upper-bound for a histogram bucket.
 type Bucket = Double
 
+data ExemplarMetadata = ExemplarMetadata LabelPairs !(Maybe TimeSpec)
+  deriving (Show)
+
 data HistogramExemplar = HistogramExemplar {
     histExemplarLabelPairs :: LabelPairs
 ,   histExemplarValue :: !Double
@@ -97,8 +101,8 @@ instance Observer Histogram where
 -- This feature is experimental and must be [enabled on the Prometheus server](https://prometheus.io/docs/prometheus/latest/feature_flags/).
 --
 -- > withLabel incomingHttpRequestSeconds "Signup_POST" (`observeWithExemplar` 1.23 [("trace_id", "12345"), ("span_id", "67890")])
-observeWithExemplar :: Histogram -> Double -> HistogramExemplar -> IO ()
-observeWithExemplar h v exemplar = withHistogram h (insertWithExemplar v (Just exemplar))
+observeWithExemplar :: Histogram -> Double -> ExemplarMetadata -> IO ()
+observeWithExemplar h v (ExemplarMetadata labelPairs mTimestamp) = withHistogram h (insertWithExemplar v (Just (HistogramExemplar labelPairs v mTimestamp)))
 
 -- | Transform the contents of a histogram.
 withHistogram :: MonadMonitor m

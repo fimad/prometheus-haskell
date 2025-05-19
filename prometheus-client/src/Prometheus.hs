@@ -125,6 +125,7 @@ module Prometheus (
 ,   linearBuckets
 ,   getHistogram
 ,   observeWithExemplar
+,   ExemplarMetadata(..)
 
 -- ** Vector
 --
