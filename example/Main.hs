@@ -43,7 +43,7 @@ main = do
     -- Instrument the app with the prometheus middlware using the default
     -- `PrometheusSettings`. This will cause the app to dump the metrics when
     -- the /metrics endpoint is accessed.
-    run port (P.prometheus P.def app)
+    run port (P.prometheus P.def {P.prometheusExportFormat = P.OpenMetricsOneZeroZero} app)
 
 app :: Wai.Application
 app request respond = do

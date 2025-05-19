@@ -14,6 +14,7 @@ module Prometheus (
 -- * Exporting
 
 ,   exportMetricsAsText
+,   exportMetricsAsOpenMetrics1
 
 -- * Metrics
 --
