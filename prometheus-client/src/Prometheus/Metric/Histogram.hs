@@ -57,6 +57,11 @@ histogram info buckets = Metric $ do
 -- | Upper-bound for a histogram bucket.
 type Bucket = Double
 
+-- | A set of key-value pairs that correlates time series data
+-- to a specific trace.
+--
+-- The additional timestamp parameter is optional, but it's recommended
+-- to more accurately show on a graph when the exemplar occurred.
 data ExemplarMetadata = ExemplarMetadata LabelPairs !(Maybe TimeSpec)
   deriving (Show)
 
@@ -100,7 +105,7 @@ instance Observer Histogram where
 --
 -- This feature is experimental and must be [enabled on the Prometheus server](https://prometheus.io/docs/prometheus/latest/feature_flags/).
 --
--- > withLabel incomingHttpRequestSeconds "Signup_POST" (`observeWithExemplar` 1.23 [("trace_id", "12345"), ("span_id", "67890")])
+-- > withLabel incomingHttpRequestSeconds "Signup_POST" (\hist -> observeWithExemplar hist 1.23 (P.ExemplarMetadata [("trace_id", "12345"), ("span_id", "67890")] Nothing))
 observeWithExemplar :: Histogram -> Double -> ExemplarMetadata -> IO ()
 observeWithExemplar h v (ExemplarMetadata labelPairs mTimestamp) = withHistogram h (insertWithExemplar v (Just (HistogramExemplar labelPairs v mTimestamp)))
 
@@ -121,7 +126,7 @@ getHistogram (MkHistogram bucketsTVar) =
 insert :: Double -> BucketCounts -> BucketCounts
 insert value bucketCounts = insertWithExemplar value Nothing bucketCounts 
 
-insertWithExemplar :: Double -> (Maybe HistogramExemplar) -> BucketCounts -> BucketCounts
+insertWithExemplar :: Double -> Maybe HistogramExemplar -> BucketCounts -> BucketCounts
 insertWithExemplar value mHistogramExemplar BucketCounts { histTotal = total, histCount = count, histCountsPerBucket = counts, histBucketExemplars = existingExemplarMap } =
     let updatedValues = case Map.lookupGE value counts of
                 Nothing -> counts
