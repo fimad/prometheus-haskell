@@ -49,7 +49,7 @@ library
     , utf8-string
     , exceptions
     , text
-    , data-sketches
+    , data-sketches      < 0.4
   ghc-options: -Wall
 
 test-suite doctest
@@ -86,7 +86,7 @@ test-suite spec
     , exceptions
     , text
     , primitive
-    , data-sketches
+    , data-sketches      < 0.4
   ghc-options: -Wall
 
 benchmark bench
