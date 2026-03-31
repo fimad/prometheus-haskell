@@ -4,6 +4,7 @@ module Prometheus.Export.Text (
     exportMetricsAsText
 ) where
 
+import Prometheus.Label (unLabelPairs, LabelPair(..))
 import Prometheus.Info
 import Prometheus.Metric
 import Prometheus.Registry
@@ -65,7 +66,7 @@ exportSamples samples =
 exportSample :: Sample -> Build.Builder
 exportSample (Sample name labels value) =
   Build.byteString (T.encodeUtf8 name)
-    <> (case labels of
+    <> (case unLabelPairs labels of
          [] -> mempty
          l:ls ->
            Build.charUtf8 '{'
@@ -73,10 +74,10 @@ exportSample (Sample name labels value) =
              <> mconcat [ Build.charUtf8 ',' <> exportLabel l' | l' <- ls ]
              <> Build.charUtf8 '}')
     <> Build.charUtf8 ' '
-    <> Build.byteString value
+    <> value
 
-exportLabel :: (Text, Text) -> Build.Builder
-exportLabel (key, value) =
+exportLabel :: LabelPair -> Build.Builder
+exportLabel LabelPair { labelKey = key, labelValue = value } =
   Build.byteString (T.encodeUtf8 key)
     <> Build.charUtf8 '='
     <> Build.stringUtf8 (show value)

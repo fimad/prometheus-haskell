@@ -2,6 +2,7 @@
 
 module Prometheus.Metric (
     Metric (..)
+,   MetricImpl (..)
 ,   Sample (..)
 ,   SampleGroup (..)
 ,   SampleType (..)
@@ -12,6 +13,7 @@ import Prometheus.Label
 
 import Control.DeepSeq
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Builder as Builder
 import Data.Text (Text)
 
 
@@ -34,13 +36,13 @@ instance Show SampleType where
 -- | A single value recorded at a moment in time. The sample type contains the
 -- name of the sample, a list of labels and their values, and the value encoded
 -- as a ByteString.
-data Sample = Sample Text LabelPairs BS.ByteString
-    deriving (Show)
+data Sample = Sample !Text !LabelPairs !Builder.Builder
+    -- deriving (Show)
 
 -- | A Sample group is a list of samples that is tagged with meta data
 -- including the name, help string, and type of the sample.
-data SampleGroup = SampleGroup Info SampleType [Sample]
-    deriving (Show)
+data SampleGroup = SampleGroup !Info !SampleType [Sample]
+    -- deriving (Show)
 
 -- | A metric represents a single value that is being monitored. It is comprised
 -- of a handle value and a collect method. The handle value is typically a new
@@ -58,8 +60,13 @@ newtype Metric s =
       --    metric. A counter would return state pointing to the mutable
       --    reference.
       -- 2. An 'IO' action that samples the metric and returns 'SampleGroup's.
-      --    This is the data that will be stored by Prometheus. 
-      construct :: IO (s, IO [SampleGroup])
+      --    This is the data that will be stored by Prometheus.
+      construct :: IO (MetricImpl s)
+    }
+
+data MetricImpl s = MetricImpl
+    { metricImplState :: !s
+    , metricImplCollect :: IO [SampleGroup]
     }
 
 instance NFData a => NFData (Metric a) where

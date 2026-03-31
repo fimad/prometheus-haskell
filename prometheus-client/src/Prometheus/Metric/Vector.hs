@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Prometheus.Metric.Vector (
     Vector (..)
 ,   vector
@@ -20,7 +22,10 @@ import qualified Data.Text as T
 import Data.Traversable (forM)
 
 
-type VectorState l m = (Metric m, Map.Map l (m, IO [SampleGroup]))
+data VectorState l m = VectorState
+    { vectorStateMetric :: !(Metric m)
+    , vectorStateMetricMap :: !(Map.Map l (MetricImpl m))
+    }
 
 data Vector l m = MkVector (IORef.IORef (VectorState l m))
 
@@ -30,11 +35,11 @@ instance NFData (Vector l m) where
 -- | Creates a new vector of metrics given a label.
 vector :: Label l => l -> Metric m -> Metric (Vector l m)
 vector labels gen = Metric $ do
-    ioref <- checkLabelKeys labels $ IORef.newIORef (gen, Map.empty)
-    return (MkVector ioref, collectVector labels ioref)
+    ioref <- checkLabelKeys labels $ IORef.newIORef $ VectorState gen Map.empty
+    return $ MetricImpl (MkVector ioref) (collectVector labels ioref)
 
 checkLabelKeys :: Label l => l -> a -> a
-checkLabelKeys keys r = foldl check r $ map (T.unpack . fst) $ labelPairs keys keys
+checkLabelKeys keys r = foldl check r $ map (T.unpack . labelKey) $ unLabelPairs $ labelPairs keys keys
     where
         check _ "instance" = error "The label 'instance' is reserved."
         check _ "job"      = error "The label 'job' is reserved."
@@ -58,17 +63,17 @@ checkLabelKeys keys r = foldl check r $ map (T.unpack . fst) $ labelPairs keys k
 -- It is not clear that this will always be a valid assumption.
 collectVector :: Label l => l -> IORef.IORef (VectorState l m) -> IO [SampleGroup]
 collectVector keys ioref = do
-    (_, metricMap) <- IORef.readIORef ioref
+    VectorState _ metricMap <- IORef.readIORef ioref
     joinSamples <$> concat <$> mapM collectInner (Map.assocs metricMap)
     where
-        collectInner (labels, (_metric, sampleGroups)) =
+        collectInner (labels, (MetricImpl _metric sampleGroups)) =
             map (adjustSamples labels) <$> sampleGroups
 
         adjustSamples labels (SampleGroup info ty samples) =
             SampleGroup info ty (map (prependLabels labels) samples)
 
         prependLabels l (Sample name labels value) =
-            Sample name (labelPairs keys l ++ labels) value
+            Sample name (labelPairs keys l <> labels) value
 
         joinSamples []                      = []
         joinSamples s@(SampleGroup i t _:_) = [SampleGroup i t (extract s)]
@@ -80,8 +85,8 @@ getVectorWith :: Vector label metric
               -> (metric -> IO a)
               -> IO [(label, a)]
 getVectorWith (MkVector valueTVar) f = do
-    (_, metricMap) <- IORef.readIORef valueTVar
-    Map.assocs <$> forM metricMap (f . fst)
+    VectorState _ metricMap <- IORef.readIORef valueTVar
+    Map.assocs <$> forM metricMap (f . metricImplState)
 
 -- | Given a label, applies an operation to the corresponding metric in the
 -- vector.
@@ -91,26 +96,26 @@ withLabel :: (Label label, MonadMonitor m)
           -> (metric -> IO ())
           -> m ()
 withLabel (MkVector ioref) label f = doIO $ do
-    (Metric gen, _) <- IORef.readIORef ioref
+    VectorState (Metric gen) _ <- IORef.readIORef ioref
     newMetric <- gen
-    metric <- Atomics.atomicModifyIORefCAS ioref $ \(_, metricMap) ->
+    MetricImpl metric newVectorState <- Atomics.atomicModifyIORefCAS ioref $ \(VectorState _ metricMap) ->
         let maybeMetric = Map.lookup label metricMap
             updatedMap  = Map.insert label newMetric metricMap
         in  case maybeMetric of
-                Nothing     -> ((Metric gen, updatedMap), newMetric)
-                Just metric -> ((Metric gen, metricMap), metric)
-    f (fst metric)
+                Nothing     -> (VectorState (Metric gen) updatedMap, newMetric)
+                Just metric -> (VectorState (Metric gen) metricMap, metric)
+    f metric
 
 -- | Removes a label from a vector.
 removeLabel :: (Label label, MonadMonitor m)
             => Vector label metric -> label -> m ()
 removeLabel (MkVector valueTVar) label =
     doIO $ Atomics.atomicModifyIORefCAS_ valueTVar f
-    where f (desc, metricMap) = (desc, Map.delete label metricMap)
+    where f (VectorState desc metricMap) = VectorState desc (Map.delete label metricMap)
 
 -- | Removes all labels from a vector.
 clearLabels :: (Label label, MonadMonitor m)
             => Vector label metric -> m ()
 clearLabels (MkVector valueTVar) =
     doIO $ Atomics.atomicModifyIORefCAS_ valueTVar f
-    where f (desc, _) = (desc, Map.empty)
+    where f (VectorState desc _) = VectorState desc Map.empty

@@ -57,7 +57,7 @@ module Prometheus (
 -- set the value of a gauge as well as add and subtract arbitrary values.
 --
 -- >>> myGauge <- register $ gauge (Info "my_gauge" "An example gauge")
--- >>> setGauge myGauge 100 
+-- >>> setGauge myGauge 100
 -- >>> addGauge myGauge 50
 -- >>> subGauge myGauge 25
 -- >>> getGauge myGauge
@@ -100,7 +100,7 @@ module Prometheus (
 -- [(1 % 2,0.0),(9 % 10,0.0),(99 % 100,0.0)]
 
 ,   Summary
-,   Quantile
+,   Quantile(..)
 ,   summary
 ,   defaultQuantiles
 ,   getSummary
@@ -113,7 +113,7 @@ module Prometheus (
 -- summaries in that they can be meaningfully aggregated across processes.
 --
 -- >>> myHistogram <- register $ histogram (Info "my_histogram" "") defaultBuckets
--- >>> observe myHistogram 0 
+-- >>> observe myHistogram 0
 -- >>> getHistogram myHistogram
 -- fromList [(5.0e-3,1),(1.0e-2,0),(2.5e-2,0),(5.0e-2,0),(0.1,0),(0.25,0),(0.5,0),(1.0,0),(2.5,0),(5.0,0),(10.0,0)]
 ,   Histogram
@@ -130,11 +130,11 @@ module Prometheus (
 -- partitioned across a set of dimensions.
 --
 -- >>> myVector <- register $ vector ("method", "code") $ counter (Info "http_requests" "")
--- >>> withLabel myVector ("GET", "200") incCounter 
--- >>> withLabel myVector ("GET", "200") incCounter 
--- >>> withLabel myVector ("GET", "404") incCounter 
--- >>> withLabel myVector ("POST", "200") incCounter 
--- >>> getVectorWith myVector getCounter 
+-- >>> withLabel myVector ("GET", "200") incCounter
+-- >>> withLabel myVector ("GET", "200") incCounter
+-- >>> withLabel myVector ("GET", "404") incCounter
+-- >>> withLabel myVector ("POST", "200") incCounter
+-- >>> getVectorWith myVector getCounter
 -- [(("GET","200"),2.0),(("GET","404"),1.0),(("POST","200"),1.0)]
 -- >>> exportMetricsAsText >>= Data.ByteString.Lazy.putStr
 -- # HELP http_requests
@@ -199,11 +199,11 @@ module Prometheus (
 -- >>> :m +Data.ByteString.UTF8
 -- >>> newtype CPUTime = MkCPUTime ()
 -- >>> let info = Info "cpu_time" "The current CPU time"
--- >>> let toValue = Data.ByteString.UTF8.fromString . show
--- >>> let toSample = Sample "cpu_time" [] . toValue
+-- >>> let toValue = Data.ByteString.Builder.stringUtf8 . show
+-- >>> let toSample = Sample "cpu_time" mempty . toValue
 -- >>> let toSampleGroup = (:[]) . SampleGroup info GaugeType . (:[]) . toSample
 -- >>> let collectCPUTime = fmap toSampleGroup getCPUTime
--- >>> let cpuTimeMetric = Metric (return (MkCPUTime (), collectCPUTime))
+-- >>> let cpuTimeMetric = Metric (return $ MetricImpl (MkCPUTime ()) collectCPUTime)
 -- >>> register cpuTimeMetric
 -- >>> exportMetricsAsText >>= Data.ByteString.Lazy.putStr
 -- # HELP cpu_time The current CPU time
@@ -244,6 +244,7 @@ module Prometheus (
 
 ,   Info (..)
 ,   Metric (..)
+,   MetricImpl (..)
 ,   Sample (..)
 ,   SampleGroup (..)
 ,   SampleType (..)
@@ -266,5 +267,6 @@ import Prometheus.Registry
 -- $setup
 -- >>> :module +Prometheus
 -- >>> :module +Control.Monad
+-- >>> :module +Data.ByteString.Builder
 -- >>> :set -XOverloadedStrings
 -- >>> unregisterAll

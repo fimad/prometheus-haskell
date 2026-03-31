@@ -20,6 +20,7 @@ import Control.Monad.IO.Class
 import Control.Monad (unless)
 import qualified Data.Atomics as Atomics
 import qualified Data.ByteString.UTF8 as BS
+import qualified Data.ByteString.Builder as Builder
 import qualified Data.IORef as IORef
 
 
@@ -32,7 +33,7 @@ instance NFData Counter where
 counter :: Info -> Metric Counter
 counter info = Metric $ do
     ioref <- IORef.newIORef 0
-    return (MkCounter ioref, collectCounter info ioref)
+    return $ MetricImpl (MkCounter ioref) (collectCounter info ioref)
 
 withCounter :: MonadMonitor m
           => Counter
@@ -67,7 +68,7 @@ unsafeAddCounter c x = do
 addDurationToCounter :: (MonadIO m, MonadMonitor m) => Counter -> m a -> m a
 addDurationToCounter metric io = do
     (result, duration) <- timeAction io
-    _ <- addCounter metric duration 
+    _ <- addCounter metric duration
     return result
 
 -- | Retrieves the current value of a counter metric.
@@ -77,7 +78,7 @@ getCounter (MkCounter ioref) = liftIO $ IORef.readIORef ioref
 collectCounter :: Info -> IORef.IORef Double -> IO [SampleGroup]
 collectCounter info c = do
     value <- IORef.readIORef c
-    let sample = Sample (metricName info) [] (BS.fromString $ show value)
+    let sample = Sample (metricName info) mempty (Builder.doubleDec value)
     return [SampleGroup info CounterType [sample]]
 
 -- | Count the amount of times an action throws any synchronous exception.

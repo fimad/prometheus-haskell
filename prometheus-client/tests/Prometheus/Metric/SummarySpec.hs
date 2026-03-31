@@ -11,7 +11,7 @@ import Prometheus.Metric.Summary
 import Control.Applicative ((<$>))
 import Control.Monad
 import Data.Int (Int64)
-import Data.List (sort, sortBy)
+import Data.List (sort, sortBy, sortOn)
 import Numeric (fromRat)
 import System.Random.Shuffle
 import Test.Hspec
@@ -19,7 +19,7 @@ import Test.QuickCheck
 
 spec :: Spec
 spec = describe "Prometheus.Metric.Summary" $ do
-    observeToUnsafe 
+    observeToUnsafe
     let windowSize = 10000
     it "computes quantiles correctly for [0,10000) in order" $ do
         m <- register $ summary (Info "name" "help") quantiles
@@ -53,7 +53,7 @@ spec = describe "Prometheus.Metric.Summary" $ do
 testMetric :: Summary
 testMetric = do
   unsafeRegister $ summary (Info "test_histogram" "") quantiles
-  
+
 observeToUnsafe :: Spec
 observeToUnsafe =
   it "Is able to observe to a top-level 'unsafeRegister' metric" $ do
@@ -125,15 +125,16 @@ checkQuantiles m windowSize values = do
                 ]
 
 quantiles :: [Quantile]
-quantiles = [(0.5, 0.05), (0.9, 0.01), (0.99, 0.001)]
+quantiles = [Quantile 0.5 0.05, Quantile 0.9 0.01, Quantile 0.99 0.001]
 
 getQuantiles :: [Quantile] -> Summary -> IO [(Rational, Rational, Double)]
 getQuantiles qs s = do
-    values <- sortQuantiles <$> getSummary s
+    values <- sortQuantiles' <$> getSummary s
     let sortedQuantiles = sortQuantiles qs
-    return $ zipWith (\(q, e) (_, v) -> (q, e, v)) sortedQuantiles values
+    return $ zipWith (\(Quantile q e) (_, v) -> (q, e, v)) sortedQuantiles values
     where
-        sortQuantiles = sortBy (\(a, _) (b, _) -> compare a b)
+        sortQuantiles = sortBy (\(Quantile a _) (Quantile b _) -> compare a b)
+        sortQuantiles' = sortOn fst
 
 -- | Return a tuple that describes the range of that an element's true rank can
 -- be in. For example, in the list [0, 0, 0, 1] the result for querying 0 will

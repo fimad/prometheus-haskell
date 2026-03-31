@@ -15,6 +15,7 @@ import Prometheus.Metric
 import Prometheus.Metric.Observer (timeAction)
 import Prometheus.MonadMonitor
 
+import qualified Data.ByteString.Builder as Builder
 import Control.DeepSeq
 import Control.Monad.IO.Class
 import qualified Data.Atomics as Atomics
@@ -31,7 +32,7 @@ instance NFData Gauge where
 gauge :: Info -> Metric Gauge
 gauge info = Metric $ do
     ioref <- IORef.newIORef 0
-    return (MkGauge ioref, collectGauge info ioref)
+    return $ MetricImpl (MkGauge ioref) (collectGauge info ioref)
 
 withGauge :: MonadMonitor m
           => Gauge
@@ -71,11 +72,11 @@ getGauge (MkGauge ioref) = liftIO $ IORef.readIORef ioref
 setGaugeToDuration :: (MonadIO m, MonadMonitor m) => Gauge -> m a -> m a
 setGaugeToDuration metric io = do
     (result, duration) <- timeAction io
-    setGauge metric duration 
+    setGauge metric duration
     return result
 
 collectGauge :: Info -> IORef.IORef Double -> IO [SampleGroup]
 collectGauge info c = do
     value <- IORef.readIORef c
-    let sample = Sample (metricName info) [] (BS.fromString $ show value)
+    let sample = Sample (metricName info) mempty (Builder.doubleDec value)
     return [SampleGroup info GaugeType [sample]]

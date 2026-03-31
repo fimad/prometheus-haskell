@@ -28,6 +28,7 @@ library
     , prometheus-client  >=1.0.0 && <1.2
     , utf8-string        >=0.3
     , text
+    , bytestring
   ghc-options: -Wall
 
 test-suite doctest

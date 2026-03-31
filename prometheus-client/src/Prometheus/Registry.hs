@@ -31,7 +31,7 @@ globalRegistry = unsafePerformIO $ STM.newTVarIO []
 -- | Registers a metric with the global metric registry.
 register :: MonadIO m => Metric s -> m s
 register (Metric mk) = liftIO $ do
-    (metric, sampleGroups) <- mk
+    MetricImpl metric sampleGroups <- mk
     let addToRegistry = (sampleGroups :)
     liftIO $ STM.atomically $ STM.modifyTVar' globalRegistry addToRegistry
     return metric
