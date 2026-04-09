@@ -49,6 +49,10 @@ library
     , utf8-string
     , exceptions
     , text
+    , stm-containers
+    , focus
+    , list-t
+    , hashable
     , data-sketches      < 0.4
   ghc-options: -Wall
 
@@ -62,12 +66,17 @@ test-suite doctest
       base               >=4.7 && <5
     , doctest
     , prometheus-client
+    , list-t
+    , hashable
+    , stm-containers
 
 test-suite spec
   type:              exitcode-stdio-1.0
   default-language:  Haskell2010
   hs-source-dirs:    src, tests
   main-is:           Spec.hs
+  build-tool-depends:
+    hspec-discover:hspec-discover
   build-depends:
       QuickCheck
     , atomic-primops
@@ -86,6 +95,10 @@ test-suite spec
     , exceptions
     , text
     , primitive
+    , focus
+    , list-t
+    , hashable
+    , stm-containers
     , data-sketches      < 0.4
   ghc-options: -Wall
 

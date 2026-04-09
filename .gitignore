@@ -5,3 +5,5 @@ cabal.config
 .stack-work
 */*.yaml.lock
 .devcontainer
+dist-newstyle/
+stack.yaml.lock

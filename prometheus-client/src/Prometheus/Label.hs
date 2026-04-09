@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Prometheus.Label (
     Label (..)
@@ -17,6 +18,15 @@ module Prometheus.Label (
 ) where
 
 import Data.Text
+import Data.Hashable
+
+instance (Hashable a, Hashable b, Hashable c, Hashable d, Hashable e, Hashable f, Hashable g, Hashable h) => Hashable (a, b, c, d, e, f, g, h) where
+    hashWithSalt s (a, b, c, d, e, f, g, h) =
+        s `hashWithSalt` a `hashWithSalt` b `hashWithSalt` c `hashWithSalt` d `hashWithSalt` e `hashWithSalt` f `hashWithSalt` g `hashWithSalt` h
+
+instance (Hashable a, Hashable b, Hashable c, Hashable d, Hashable e, Hashable f, Hashable g, Hashable h, Hashable i) => Hashable (a, b, c, d, e, f, g, h, i) where
+    hashWithSalt s (a, b, c, d, e, f, g, h, i) =
+        s `hashWithSalt` a `hashWithSalt` b `hashWithSalt` c `hashWithSalt` d `hashWithSalt` e `hashWithSalt` f `hashWithSalt` g `hashWithSalt` h `hashWithSalt` i
 
 -- | A list of tuples where the first value is the label and the second is the
 -- value of that label.
@@ -24,7 +34,7 @@ type LabelPairs = [(Text, Text)]
 
 -- | Label describes a class of types that can be used to as the label of
 -- a vector.
-class Ord l => Label l where
+class Hashable l => Label l where
     labelPairs :: l -> l -> LabelPairs
 
 type Label0 = ()

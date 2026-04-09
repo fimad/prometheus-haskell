@@ -13,25 +13,31 @@ import Prometheus.MonadMonitor
 
 import Control.Applicative ((<$>))
 import Control.DeepSeq
-import qualified Data.Atomics as Atomics
-import qualified Data.IORef as IORef
-import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import Data.Traversable (forM)
+import System.IO.Unsafe (unsafeInterleaveIO)
+
+import Control.Concurrent.STM (atomically)
+import Control.Monad.Trans (lift)
+import qualified StmContainers.Map as Map
+import qualified Focus
+import qualified ListT
+import Data.Hashable
 
 
 type VectorState l m = (Metric m, Map.Map l (m, IO [SampleGroup]))
 
-data Vector l m = MkVector (IORef.IORef (VectorState l m))
+data Vector l m = MkVector (VectorState l m)
 
 instance NFData (Vector l m) where
-  rnf (MkVector ioref) = seq ioref ()
+  rnf (MkVector (gen, ioref)) = seq ioref `seq` seq gen ()
 
 -- | Creates a new vector of metrics given a label.
 vector :: Label l => l -> Metric m -> Metric (Vector l m)
 vector labels gen = Metric $ do
-    ioref <- checkLabelKeys labels $ IORef.newIORef (gen, Map.empty)
-    return (MkVector ioref, collectVector labels ioref)
+    m <- Map.newIO
+    vec <- checkLabelKeys labels $ pure $ (gen, m)
+    return (MkVector vec, collectVector labels vec)
 
 checkLabelKeys :: Label l => l -> a -> a
 checkLabelKeys keys r = foldl check r $ map (T.unpack . fst) $ labelPairs keys keys
@@ -56,10 +62,10 @@ checkLabelKeys keys r = foldl check r $ map (T.unpack . fst) $ labelPairs keys k
 -- TODO(will): This currently makes the assumption that all the types and info
 -- for all sample groups returned by a metric's collect method will be the same.
 -- It is not clear that this will always be a valid assumption.
-collectVector :: Label l => l -> IORef.IORef (VectorState l m) -> IO [SampleGroup]
-collectVector keys ioref = do
-    (_, metricMap) <- IORef.readIORef ioref
-    joinSamples <$> concat <$> mapM collectInner (Map.assocs metricMap)
+collectVector :: Label l => l -> VectorState l m -> IO [SampleGroup]
+collectVector keys (_, metricMap) = do
+    assocs <- ListT.toList $ Map.listTNonAtomic metricMap
+    joinSamples <$> concat <$> mapM collectInner assocs
     where
         collectInner (labels, (_metric, sampleGroups)) =
             map (adjustSamples labels) <$> sampleGroups
@@ -79,38 +85,45 @@ collectVector keys ioref = do
 getVectorWith :: Vector label metric
               -> (metric -> IO a)
               -> IO [(label, a)]
-getVectorWith (MkVector valueTVar) f = do
-    (_, metricMap) <- IORef.readIORef valueTVar
-    Map.assocs <$> forM metricMap (f . fst)
+getVectorWith (MkVector (_, metricMap)) f = do
+    ListT.toList $ do
+        (l, (m, _collect)) <- Map.listTNonAtomic metricMap
+        a <- lift $ f m
+        pure (l, a)
+
 
 -- | Given a label, applies an operation to the corresponding metric in the
 -- vector.
-withLabel :: (Label label, MonadMonitor m)
+withLabel :: (Hashable label, Label label, MonadMonitor m)
           => Vector label metric
           -> label
           -> (metric -> IO ())
           -> m ()
-withLabel (MkVector ioref) label f = doIO $ do
-    (Metric gen, _) <- IORef.readIORef ioref
-    newMetric <- gen
-    metric <- Atomics.atomicModifyIORefCAS ioref $ \(_, metricMap) ->
-        let maybeMetric = Map.lookup label metricMap
-            updatedMap  = Map.insert label newMetric metricMap
-        in  case maybeMetric of
-                Nothing     -> ((Metric gen, updatedMap), newMetric)
-                Just metric -> ((Metric gen, metricMap), metric)
+withLabel (MkVector (gen, metricMap)) label f = doIO $ do
+    newMetric <- unsafeInterleaveIO $ construct gen
+    metric <-
+        atomically $
+            Map.focus
+                (Focus.alter (\mmetric ->
+                    case mmetric of
+                        Nothing ->
+                            Just newMetric
+                        Just metric ->
+                            Just metric)
+                *> Focus.lookupWithDefault newMetric)
+                label
+                metricMap
+
     f (fst metric)
 
 -- | Removes a label from a vector.
-removeLabel :: (Label label, MonadMonitor m)
+removeLabel :: (Hashable label, Label label, MonadMonitor m)
             => Vector label metric -> label -> m ()
-removeLabel (MkVector valueTVar) label =
-    doIO $ Atomics.atomicModifyIORefCAS_ valueTVar f
-    where f (desc, metricMap) = (desc, Map.delete label metricMap)
+removeLabel (MkVector (_, metricMap)) label =
+    doIO $ atomically $ Map.delete label metricMap
 
 -- | Removes all labels from a vector.
 clearLabels :: (Label label, MonadMonitor m)
             => Vector label metric -> m ()
-clearLabels (MkVector valueTVar) =
-    doIO $ Atomics.atomicModifyIORefCAS_ valueTVar f
-    where f (desc, _) = (desc, Map.empty)
+clearLabels (MkVector (_, metricMap)) =
+    doIO $ atomically $ Map.reset metricMap
