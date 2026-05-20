@@ -69,7 +69,8 @@ determineK (rank_, acceptableError) = go 6
 summary :: Info -> [Quantile] -> Metric Summary
 summary info quantiles_ = Metric $ do
     rs <- mkReqSketch kInt HighRanksAreAccurate
-    mv <- newMVar $ rs {criterion = (:<=)}
+    setCriterionLE rs
+    mv <- newMVar rs
     let summary_ = MkSummary mv quantiles_
     return (summary_, collectSummary info summary_)
     where

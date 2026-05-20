@@ -7,4 +7,6 @@ packages:
 - ../wai-middleware-prometheus
 extra-deps:
 - unix-memory-0.1.2
-resolver: nightly-2024-03-01
+- data-sketches-0.4.0.0
+- data-sketches-core-0.2.0.1
+resolver: nightly-2026-04-01
