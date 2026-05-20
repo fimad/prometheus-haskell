@@ -8,4 +8,5 @@ packages:
 extra-deps:
 - unix-memory-0.1.2
 - data-sketches-0.4.0.0
-resolver: lts-18.5
+- data-sketches-core-0.2.0.1
+resolver: lts-24.40
