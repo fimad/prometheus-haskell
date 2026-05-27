@@ -2,6 +2,10 @@
 
 ## HEAD
 
+## 1.1.2
+
+- Support data-sketches 0.4
+
 ## 1.1.1 -- 2023-08-01
 
 - Support `mtl-2.3`
