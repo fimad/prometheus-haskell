@@ -1,7 +1,9 @@
 {-# language GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Prometheus.Metric (
     Metric (..)
+,   metricIO
 ,   Sample (..)
 ,   SampleGroup (..)
 ,   SampleType (..)
@@ -61,6 +63,22 @@ newtype Metric s =
       --    This is the data that will be stored by Prometheus. 
       construct :: IO (s, IO [SampleGroup])
     }
+   deriving (Functor)
+
+-- | Use this Applicative instance to combine metrics, in order to export
+-- a group of metric as a single value.
+instance Applicative Metric where
+  pure x = Metric $ return (x, return [])
+  (Metric iof) <*> (Metric iox) = Metric $ do
+    (f, fsampling) <- iof
+    (x, xsampling) <- iox
+    return (f x, fsampling <> xsampling)
 
 instance NFData a => NFData (Metric a) where
   rnf (Metric a) = a `seq` ()
+
+-- | What should be the name of this function?
+metricIO :: IO (Metric a) -> Metric a
+metricIO iometric = Metric $ do
+  Metric create <- iometric
+  create
