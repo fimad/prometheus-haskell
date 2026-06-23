@@ -2,6 +2,7 @@
 
 module Prometheus.Export.Text (
     exportMetricsAsText
+,   exportMetricsAsOpenMetrics1
 ) where
 
 import Prometheus.Info
@@ -16,7 +17,7 @@ import Data.Monoid ((<>), mempty, mconcat)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-
+import System.Clock
 
 -- $setup
 -- >>> :module +Prometheus
@@ -39,10 +40,30 @@ import qualified Data.Text.Encoding as T
 exportMetricsAsText :: MonadIO m => m BS.ByteString
 exportMetricsAsText = do
     samples <- collectMetrics
-    return $ Build.toLazyByteString $ foldMap exportSampleGroup samples
+    return $ Build.toLazyByteString $ foldMap (exportSampleGroup TextZeroZeroFour) samples
 
-exportSampleGroup :: SampleGroup -> Build.Builder
-exportSampleGroup (SampleGroup info ty samples) =
+-- | Export all registered metrics in the OpenMetrics 1.0.0 format.
+--
+-- For the full specification of the format, see the official Prometheus
+-- <https://prometheus.io/docs/specs/om/open_metrics_spec/ documentation>.
+--
+-- Note, you MUST set the content-type header to:
+-- @application/openmetrics-text; version=1.0.0; charset=utf-8@
+-- for this format.
+--
+-- The OpenMetrics spec lists more features than Prometheus actually supports.
+-- The only additional benefit of OpenMetrics when using this library is that
+-- exemplars are supported. 
+exportMetricsAsOpenMetrics1 :: MonadIO m => m BS.ByteString
+exportMetricsAsOpenMetrics1 = do
+    samples <- collectMetrics
+    return $ Build.toLazyByteString $ (foldMap (exportSampleGroup OpenMetricsOneZeroZero) samples) <> Build.byteString "# EOF\n"
+
+data ExportFormat = TextZeroZeroFour | OpenMetricsOneZeroZero
+  deriving (Show, Eq, Ord)
+
+exportSampleGroup :: ExportFormat -> SampleGroup -> Build.Builder
+exportSampleGroup format (SampleGroup info ty samples) =
     if null samples
         then mempty
         else prefix <> exportedSamples
@@ -55,6 +76,7 @@ exportSampleGroup (SampleGroup info ty samples) =
             ,   "# TYPE " <> name <> " " <> T.pack (show ty)
             ]
         escape '\n' = "\\n"
+        escape '"' = if format == OpenMetricsOneZeroZero then "\\\"" else "\""
         escape '\\' = "\\\\"
         escape other = T.pack [other]
 
@@ -63,17 +85,39 @@ exportSamples samples =
   mconcat [ exportSample s <> Build.charUtf8 '\n' | s <- samples ]
 
 exportSample :: Sample -> Build.Builder
-exportSample (Sample name labels value) =
+exportSample (Sample name labels value mExemplar) =
   Build.byteString (T.encodeUtf8 name)
-    <> (case labels of
+    <> buildLabelPairs labels
+    <> Build.charUtf8 ' '
+    <> Build.byteString value
+    <> case mExemplar of
+         Nothing -> mempty
+         Just exemplar -> encodeExemplar exemplar
+
+  where 
+        encodeExemplar :: SampleExemplar -> Build.Builder
+        encodeExemplar (SampleExemplar labelPairs exemplarValue mTimestamp) = 
+             Build.byteString " # "
+          <> buildLabelPairs labelPairs
+          <> Build.charUtf8 ' '
+          <> Build.byteString exemplarValue
+          <> case mTimestamp of
+               Nothing -> mempty
+               Just timestamp -> Build.charUtf8 ' ' <> encodeTimespec timestamp
+
+        encodeTimespec :: TimeSpec -> Build.Builder
+        encodeTimespec timespec = 
+          Build.int64Dec (sec timespec) 
+          <> Build.charUtf8 '.'
+          <> Build.int64Dec (nsec timespec)
+
+        buildLabelPairs labelPairs = case labelPairs of
          [] -> mempty
          l:ls ->
            Build.charUtf8 '{'
              <> exportLabel l
              <> mconcat [ Build.charUtf8 ',' <> exportLabel l' | l' <- ls ]
-             <> Build.charUtf8 '}')
-    <> Build.charUtf8 ' '
-    <> Build.byteString value
+             <> Build.charUtf8 '}'
 
 exportLabel :: (Text, Text) -> Build.Builder
 exportLabel (key, value) =

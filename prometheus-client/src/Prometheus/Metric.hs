@@ -5,6 +5,7 @@ module Prometheus.Metric (
 ,   Sample (..)
 ,   SampleGroup (..)
 ,   SampleType (..)
+,   SampleExemplar(..)
 ) where
 
 import Prometheus.Info
@@ -13,6 +14,7 @@ import Prometheus.Label
 import Control.DeepSeq
 import qualified Data.ByteString as BS
 import Data.Text (Text)
+import System.Clock
 
 
 -- | The type of a sample. This corresponds to the 5 types of metrics supported
@@ -31,10 +33,16 @@ instance Show SampleType where
     show HistogramType = "histogram"
     show UntypedType   = "untyped"
 
+-- | A specific example for a metric. Contains key-value pairs for the sample
+-- (e.g. a trace_id), the value of the sample encoded as a ByteString,
+-- and an optional timestamp.
+data SampleExemplar = SampleExemplar LabelPairs BS.ByteString (Maybe TimeSpec)
+    deriving (Show)
+
 -- | A single value recorded at a moment in time. The sample type contains the
--- name of the sample, a list of labels and their values, and the value encoded
--- as a ByteString.
-data Sample = Sample Text LabelPairs BS.ByteString
+-- name of the sample, a list of labels and their values, the value encoded
+-- as a ByteString, and an exemplar (counter and histogram only).
+data Sample = Sample Text LabelPairs BS.ByteString (Maybe SampleExemplar)
     deriving (Show)
 
 -- | A Sample group is a list of samples that is tagged with meta data

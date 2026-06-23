@@ -77,5 +77,5 @@ setGaugeToDuration metric io = do
 collectGauge :: Info -> IORef.IORef Double -> IO [SampleGroup]
 collectGauge info c = do
     value <- IORef.readIORef c
-    let sample = Sample (metricName info) [] (BS.fromString $ show value)
+    let sample = Sample (metricName info) [] (BS.fromString $ show value) Nothing
     return [SampleGroup info GaugeType [sample]]

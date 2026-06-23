@@ -350,4 +350,4 @@ showCollector :: Show a => Text -> Text -> SampleType -> a -> LabelPairs -> IO [
 showCollector name help sampleType value labels = do
     let info = Info name help
     let valueBS = BS.fromString $ show value
-    return [SampleGroup info sampleType [Sample name labels valueBS]]
+    return [SampleGroup info sampleType [Sample name labels valueBS Nothing]]

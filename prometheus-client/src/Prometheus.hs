@@ -14,6 +14,7 @@ module Prometheus (
 -- * Exporting
 
 ,   exportMetricsAsText
+,   exportMetricsAsOpenMetrics1
 
 -- * Metrics
 --
@@ -123,6 +124,8 @@ module Prometheus (
 ,   exponentialBuckets
 ,   linearBuckets
 ,   getHistogram
+,   observeWithExemplar
+,   ExemplarMetadata(..)
 
 -- ** Vector
 --
@@ -200,7 +203,7 @@ module Prometheus (
 -- >>> newtype CPUTime = MkCPUTime ()
 -- >>> let info = Info "cpu_time" "The current CPU time"
 -- >>> let toValue = Data.ByteString.UTF8.fromString . show
--- >>> let toSample = Sample "cpu_time" [] . toValue
+-- >>> let toSample x = Sample "cpu_time" [] (toValue x) Nothing
 -- >>> let toSampleGroup = (:[]) . SampleGroup info GaugeType . (:[]) . toSample
 -- >>> let collectCPUTime = fmap toSampleGroup getCPUTime
 -- >>> let cpuTimeMetric = Metric (return (MkCPUTime (), collectCPUTime))

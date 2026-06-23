@@ -77,7 +77,7 @@ getCounter (MkCounter ioref) = liftIO $ IORef.readIORef ioref
 collectCounter :: Info -> IORef.IORef Double -> IO [SampleGroup]
 collectCounter info c = do
     value <- IORef.readIORef c
-    let sample = Sample (metricName info) [] (BS.fromString $ show value)
+    let sample = Sample (metricName info) [] (BS.fromString $ show value) Nothing
     return [SampleGroup info CounterType [sample]]
 
 -- | Count the amount of times an action throws any synchronous exception.

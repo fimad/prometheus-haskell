@@ -70,6 +70,31 @@ spec = before_ unregisterAll $ after_ unregisterAll $
                 ,   "metric_sum 3.0"
                 ,   "metric_count 3"
                 ])
+      it "renders histograms with exemplars" $ do
+            m <- register $ histogram (Info "metric" "help") defaultBuckets
+            observeWithExemplar m 1.0 (ExemplarMetadata [("trace_id", "1")] Nothing)
+            observeWithExemplar m 1.0 (ExemplarMetadata [("trace_id", "2")] Nothing)
+            observe m 1.0
+            result <- exportMetricsAsOpenMetrics1
+            result `shouldBe` LT.encodeUtf8 (LT.pack $ unlines [
+                    "# HELP metric help"
+                ,   "# TYPE metric histogram"
+                ,   "metric_bucket{le=\"0.005\"} 0"
+                ,   "metric_bucket{le=\"0.01\"} 0"
+                ,   "metric_bucket{le=\"0.025\"} 0"
+                ,   "metric_bucket{le=\"0.05\"} 0"
+                ,   "metric_bucket{le=\"0.1\"} 0"
+                ,   "metric_bucket{le=\"0.25\"} 0"
+                ,   "metric_bucket{le=\"0.5\"} 0"
+                ,   "metric_bucket{le=\"1.0\"} 3 # {trace_id=\"2\"} 1.0"
+                ,   "metric_bucket{le=\"2.5\"} 3"
+                ,   "metric_bucket{le=\"5.0\"} 3"
+                ,   "metric_bucket{le=\"10.0\"} 3"
+                ,   "metric_bucket{le=\"+Inf\"} 3"
+                ,   "metric_sum 3.0"
+                ,   "metric_count 3"
+                ,   "# EOF"
+                ])
       it "renders vectors" $ do
             m <- register $ vector ("handler", "method")
                           $ counter (Info "test_counter" "help string")
